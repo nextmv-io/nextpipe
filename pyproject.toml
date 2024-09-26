@@ -65,3 +65,8 @@ line-length = 120
 
 [tool.hatch.version]
 path = "nextpipe/__about__.py"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.4",
+]
