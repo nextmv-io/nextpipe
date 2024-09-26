@@ -1,0 +1,67 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling >= 1.13.0"]
+
+[project]
+authors = [
+    { email = "tech@nextmv.io", name = "Nextmv" }
+]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+dependencies = [
+    "requests>=2.31.0",
+    "pathos>=0.3.2",
+    "nextmv>=0.12.0",
+]
+description = "Framework for Decision Pipeline modeling and execution"
+dynamic = [
+    "version",
+]
+keywords = [
+    "decision engineering",
+    "decision science",
+    "decisions",
+    "nextmv",
+    "optimization",
+    "operations research",
+    "pipelines",
+    "workflows",
+    "decision pipelines",
+    "decision workflows",
+    "decision automation",
+]
+license = { file = "LICENSE.md" }
+maintainers = [
+    { email = "tech@nextmv.io", name = "Nextmv" }
+]
+name = "nextpipe"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://www.nextmv.io"
+Documentation = "https://www.nextmv.io/docs"
+Repository = "https://github.com/nextmv-io/nextpipe"
+
+[tool.ruff]
+target-version = "py38"
+lint.select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "UP",  # pyupgrade
+]
+line-length = 120
+
+[tool.hatch.version]
+path = "nextpipe/__about__.py"
