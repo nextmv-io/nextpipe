@@ -58,7 +58,7 @@ jobs:
 
       - name: commit new version
         run: |
-          git add nextmv/__about__.py
+          git add nextpipe/__about__.py
           git commit -S -m "Bump version to $VERSION"
           git push
           git tag $VERSION
@@ -89,9 +89,9 @@ jobs:
       matrix:
         include:
           - target-env: pypi
-            target-url: https://pypi.org/p/nextmv
+            target-url: https://pypi.org/p/nextpipe
           - target-env: testpypi
-            target-url: https://test.pypi.org/p/nextmv
+            target-url: https://test.pypi.org/p/nextpipe
     environment:
       name: ${{ matrix.target-env }}
       url: ${{ matrix.target-url }}
