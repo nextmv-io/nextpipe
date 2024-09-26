@@ -126,7 +126,7 @@ def repeat(repetitions: int):
 
 def app(
     app_id: str,
-    instance_id: str = "default",
+    instance_id: str = "devint",
     parameters: Dict[str, any] = None,
     input_type: InputType = InputType.JSON,
 ):
