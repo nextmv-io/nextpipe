@@ -133,7 +133,7 @@ class FlowSpec:
         )
 
     @staticmethod
-    def __run_node(node: DAGNode, inputs: List[object], client: Client) -> List[object] | object | None:
+    def __run_node(node: DAGNode, inputs: List[object], client: Client) -> Union[List[object], object, None]:
         utils.log(f"Running node {node.step.get_name()}")
 
         # Skip the node if it is optional and the condition is not met
