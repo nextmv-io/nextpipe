@@ -21,12 +21,12 @@ graph TD
   run_nextroute_2(run_nextroute_2)
   run_nextroute --> run_nextroute_2
   run_nextroute_2 --> run_nextroute_join
-  run_nextroute_join --> aggregate_results
+  run_nextroute_join --> pick_best
   run_ortools(run_ortools)
-  run_ortools --> aggregate_results
+  run_ortools --> pick_best
   run_pyvroom(run_pyvroom)
-  run_pyvroom --> aggregate_results
-  aggregate_results(aggregate_results)
+  run_pyvroom --> pick_best
+  pick_best(pick_best)
 ```
 
 ## Usage

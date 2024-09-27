@@ -17,8 +17,8 @@ graph TD
   run_nextroute_2(run_nextroute_2)
   run_nextroute --> run_nextroute_2
   run_nextroute_2 --> run_nextroute_join
-  run_nextroute_join --> aggregate_results
-  aggregate_results(aggregate_results)
+  run_nextroute_join --> pick_best
+  pick_best(pick_best)
 ```
 
 ## Usage

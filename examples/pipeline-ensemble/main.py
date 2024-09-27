@@ -21,7 +21,7 @@ class Flow(FlowSpec):
 
     @needs(predecessors=[run_nextroute])
     @step
-    def aggregate_results(results: list[dict]):
+    def pick_best(results: list[dict]):
         """Aggregates the results."""
         best_solution_idx = min(
             range(len(results)),
@@ -41,7 +41,7 @@ def main():
     # Run workflow
     flow = Flow("DecisionFlow", input.data)
     flow.run()
-    result = flow.get_result(flow.aggregate_results)
+    result = flow.get_result(flow.pick_best)
     print(json.dumps(result))
 
 

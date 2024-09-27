@@ -40,7 +40,7 @@ class Flow(FlowSpec):
 
     @needs(predecessors=[run_nextroute, run_ortools, run_pyvroom])
     @step
-    def aggregate_results(
+    def pick_best(
         results_nextroute: list[dict],
         result_ortools: dict,
         result_pyvroom: dict,
@@ -67,7 +67,7 @@ def main():
     # Run workflow
     flow = Flow("DecisionFlow", None)
     flow.run()
-    result = flow.get_result(flow.aggregate_results)
+    result = flow.get_result(flow.pick_best)
     print(json.dumps(result))
 
 
