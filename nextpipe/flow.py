@@ -4,6 +4,7 @@ import collections
 import inspect
 import io
 import time
+from importlib.metadata import version
 from typing import List, Optional, Union
 
 import nextmv
@@ -202,6 +203,7 @@ class FlowGraph:
     def __init__(self, flow_spec):
         self.flow_spec = flow_spec
         self.__create_graph(flow_spec)
+        self.__debug_print_head()
         self.__debug_print_graph()
         # Create a Mermaid diagram of the graph and log it
         mermaid = self.__to_mermaid()
@@ -271,6 +273,12 @@ class FlowGraph:
                 for successor in node.successors:
                     out.write(f"  {node_name} --> {successor.step.get_name()}\n")
         return out.getvalue()
+
+    def __debug_print_head(self):
+        utils.log(f"Flow: {self.flow_spec.__name__}")
+        utils.log(f"nextpipe: {version('nextpipe')}")
+        utils.log(f"nextmv: {version('nextmv')}")
+        utils.log("Flow graph nodes:")
 
     def __debug_print_graph(self):
         for node in self.nodes:
