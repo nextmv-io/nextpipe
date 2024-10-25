@@ -7,20 +7,10 @@ import time
 from importlib.metadata import version
 from typing import List, Optional, Union
 
-import nextmv
 from nextmv.cloud import Application, Client, StatusV2
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from . import utils
-
-
-class FlowParameter(nextmv.Parameter):
-    """
-    Parameter that is used in a `FlowSpec`.
-    """
-
-    def __init__(self, name, type, default=None, description=None, required=False):
-        super().__init__(name, type, default, description, required)
 
 
 class DAGNode:

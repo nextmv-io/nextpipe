@@ -25,5 +25,5 @@ graph TD
 
 ```bash
 nextmv app push -a <app-id>
-cat /path/to/routing/input.json | nextmv app run -a <app-id> -e "8c16gb12h"
+cat /path/to/routing/input.json | nextmv app run -a <app-id> -e "8c16gb12h" -o 'instance=v171-5s'
 ```

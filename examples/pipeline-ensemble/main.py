@@ -5,12 +5,17 @@ import nextmv
 
 from nextpipe import FlowSpec, app, needs, repeat, step
 
+parameters = [
+    nextmv.Parameter("instance", str, "devint", "App instance to use. Default is devint.", False),
+]
+options = nextmv.Options(*parameters)
+
 
 # >>> Workflow definition
 class Flow(FlowSpec):
     @app(
         app_id="routing-nextroute",
-        instance_id="v171-5s",
+        instance_id=options.instance,
         parameters={"model.constraints.enable.cluster": True},
     )
     @repeat(repetitions=3)
