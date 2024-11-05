@@ -31,6 +31,13 @@ graph TD
   pick_best(pick_best)
 ```
 
+## Pre-requisites
+
+- Subscribe to the following marketplace apps and name them as follows:
+  - _Nextmv Routing_: `routing-nextroute`
+  - _OR-Tools Routing_: `routing-ortools`
+  - _PyVroom Routing_: `routing-pyvroom`
+
 ## Usage
 
 ```bash

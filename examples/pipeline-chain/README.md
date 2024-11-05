@@ -13,6 +13,10 @@ graph TD
   enhance(enhance)
 ```
 
+## Pre-requisites
+
+- Push the echo app as described in the [echo app README](../apps/echo/README.md)
+
 ## Usage
 
 ```bash

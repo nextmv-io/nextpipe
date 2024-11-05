@@ -21,6 +21,11 @@ graph TD
   pick_best(pick_best)
 ```
 
+## Pre-requisites
+
+- Subscribe to the following marketplace apps and name them as follows:
+  - _Nextmv Routing_: `routing-nextroute`
+
 ## Usage
 
 ```bash
