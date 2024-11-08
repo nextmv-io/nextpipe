@@ -3,6 +3,7 @@ import base64
 import collections
 import inspect
 import io
+import json
 import time
 from importlib.metadata import version
 from typing import List, Optional, Union
@@ -97,7 +98,21 @@ class FlowSpec:
                         # No more nodes to run at this point. Wait for the remaining tasks to finish.
                         break
                     open_nodes.remove(node)
+                    # Skip the node if it is optional and the condition is not met
+                    if node.step.skip():
+                        utils.log(f"Skipping node {node.step.get_name()}")
+                        node.step.set_state("skipped")
+                        utils.log(
+                            "NEXTPIPE_DAG_UPDATE="
+                            + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
+                        )
+                        continue
                     # Run the node asynchronously
+                    node.step.set_state("running")
+                    utils.log(
+                        "NEXTPIPE_DAG_UPDATE="
+                        + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
+                    )
                     tasks[node] = pool.apipe(
                         self.__run_node,
                         node,
@@ -115,6 +130,11 @@ class FlowSpec:
                             # Remove task and mark successors as ready by adding them to the open list.
                             result = task.get()
                             self.set_result(node, result)
+                            node.step.set_state("successful")
+                            utils.log(
+                                "NEXTPIPE_DAG_UPDATE="
+                                + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
+                            )
                             del tasks[node]
                             task_done = True
                             closed_nodes.add(node)
@@ -136,11 +156,6 @@ class FlowSpec:
     @staticmethod
     def __run_node(node: DAGNode, inputs: List[object], client: Client) -> Union[List[object], object, None]:
         utils.log(f"Running node {node.step.get_name()}")
-
-        # Skip the node if it is optional and the condition is not met
-        if node.step.skip():
-            utils.log(f"Skipping node {node.step.get_name()}")
-            return
 
         # Run the step
         if node.step.is_app():
@@ -195,8 +210,10 @@ class FlowGraph:
         self.__create_graph(flow_spec)
         self.__debug_print_head()
         self.__debug_print_graph()
+        # Print the DAG in persistence format
+        utils.log("NEXTPIPE_DAG=" + base64.b64encode(self._persist_dag().encode("utf8")).decode("ascii"))
         # Create a Mermaid diagram of the graph and log it
-        mermaid = self.__to_mermaid()
+        mermaid = self._to_mermaid()
         utils.log(mermaid)
         mermaid_url = f'https://mermaid.ink/svg/{base64.b64encode(mermaid.encode("utf8")).decode("ascii")}?theme=dark'
         utils.log(f"Mermaid URL: {mermaid_url}")
@@ -242,7 +259,26 @@ class FlowGraph:
         if cycle:
             raise Exception(f"Cycle detected in the flow graph, cycle nodes: {cycle_nodes}")
 
-    def __to_mermaid(self):
+    def _persist_dag(self):
+        r = {"nodes": []}
+        for node in self.nodes:
+            r["nodes"].append(
+                {
+                    "step": node.step.get_name(),
+                    "docstring": node.docstring,
+                    "successors": [s.step.get_name() for s in node.successors],
+                    "state": node.step.get_state(),
+                }
+            )
+        return json.dumps(r)
+
+    def _persist_dag_update(self):
+        r = {"states": {}}
+        for node in self.nodes:
+            r["states"][node.step.get_name()] = node.step.get_state()
+        return json.dumps(r)
+
+    def _to_mermaid(self):
         """Convert the graph to a Mermaid diagram."""
         out = io.StringIO()
         out.write("graph TD\n")
