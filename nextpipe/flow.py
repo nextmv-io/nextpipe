@@ -130,7 +130,7 @@ class FlowSpec:
                             # Remove task and mark successors as ready by adding them to the open list.
                             result = task.get()
                             self.set_result(node, result)
-                            node.step.set_state("successful")
+                            node.step.set_state("succeeded")
                             utils.log(
                                 "NEXTPIPE_DAG_UPDATE="
                                 + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
