@@ -267,7 +267,6 @@ class FlowGraph:
                     "step": node.step.get_name(),
                     "docstring": node.docstring,
                     "successors": [s.step.get_name() for s in node.successors],
-                    "state": node.step.get_state(),
                 }
             )
         return json.dumps(r)
