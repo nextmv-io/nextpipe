@@ -5,6 +5,7 @@ import nextmv
 
 from nextpipe import FlowSpec, app, needs, repeat, step
 
+# Define the options for the workflow
 parameters = [
     nextmv.Parameter("instance", str, "devint", "App instance to use. Default is devint.", False),
 ]
