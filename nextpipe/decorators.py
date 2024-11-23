@@ -22,6 +22,7 @@ class Step:
         self.function = function
         self.type = StepType.DEFAULT
         self.state = "pending"
+        self.run_ids = []
         self._inputs = {}
         self._output = None
 
@@ -55,6 +56,12 @@ class Step:
 
     def is_app(self):
         return self.type == StepType.APP
+
+    def set_run_ids(self, run_ids: List[str]):
+        self.run_ids = run_ids
+
+    def get_run_ids(self):
+        return self.run_ids
 
 
 class Needs:

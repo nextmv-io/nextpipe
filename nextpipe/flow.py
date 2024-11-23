@@ -3,7 +3,6 @@ import base64
 import collections
 import inspect
 import io
-import json
 import time
 from importlib.metadata import version
 from typing import List, Optional, Union
@@ -11,11 +10,11 @@ from typing import List, Optional, Union
 from nextmv.cloud import Application, Client, StatusV2
 from pathos.multiprocessing import ProcessingPool as Pool
 
-from . import utils
+from . import decorators, schema, utils
 
 
 class DAGNode:
-    def __init__(self, step_function, step_definition, docstring):
+    def __init__(self, step_function: callable, step_definition: decorators.Step, docstring: str):
         self.step_function = step_function
         self.step = step_definition
         self.docstring = docstring
@@ -102,23 +101,17 @@ class FlowSpec:
                     if node.step.skip():
                         utils.log(f"Skipping node {node.step.get_name()}")
                         node.step.set_state("skipped")
-                        utils.log(
-                            "NEXTPIPE_DAG_UPDATE="
-                            + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
-                        )
+                        utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
                         continue
                     # Run the node asynchronously
-                    node.step.set_state("running")
-                    utils.log(
-                        "NEXTPIPE_DAG_UPDATE="
-                        + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
-                    )
                     tasks[node] = pool.apipe(
                         self.__run_node,
                         node,
                         self._get_inputs(node),
                         self.client,
                     )
+                    node.step.set_state("running")
+                    utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
 
                 # Wait until at least one task is done
                 task_done = False
@@ -131,10 +124,7 @@ class FlowSpec:
                             result = task.get()
                             self.set_result(node, result)
                             node.step.set_state("succeeded")
-                            utils.log(
-                                "NEXTPIPE_DAG_UPDATE="
-                                + base64.b64encode(self.graph._persist_dag_update().encode("utf8")).decode("ascii")
-                            )
+                            utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
                             del tasks[node]
                             task_done = True
                             closed_nodes.add(node)
@@ -182,6 +172,7 @@ class FlowSpec:
             app = Application(client=client, id=app_step.app_id, default_instance_id=app_step.instance_id)
             # Run the app (or multiple runs if it is a repeat step)
             run_ids = [app.new_run(*i[0], **i[1]) for i in inputs]
+            node.step.set_run_ids(run_ids)
             outputs = utils.wait_for_runs(app=app, run_ids=run_ids)
             # Check if all runs were successful
             for output in outputs:
@@ -211,7 +202,7 @@ class FlowGraph:
         self.__debug_print_head()
         self.__debug_print_graph()
         # Print the DAG in persistence format
-        utils.log("NEXTPIPE_DAG=" + base64.b64encode(self._persist_dag().encode("utf8")).decode("ascii"))
+        utils.log("NEXTPIPE_DAG=" + self._persist_dag())
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
         utils.log(mermaid)
@@ -259,23 +250,28 @@ class FlowGraph:
         if cycle:
             raise Exception(f"Cycle detected in the flow graph, cycle nodes: {cycle_nodes}")
 
-    def _persist_dag(self):
-        r = {"nodes": []}
-        for node in self.nodes:
-            r["nodes"].append(
-                {
-                    "step": node.step.get_name(),
-                    "docstring": node.docstring,
-                    "successors": [s.step.get_name() for s in node.successors],
-                }
-            )
-        return json.dumps(r)
+    def _persist_dag(self) -> str:
+        dto = schema.DAGDTO(
+            nodes=[
+                schema.NodeDTO(
+                    id=node.step.get_name(),
+                    app_id=node.step.app.app_id if node.step.is_app() else "",
+                    step_name=node.step.get_name(),
+                    docs=node.docstring,
+                    successors=[s.step.get_name() for s in node.successors],
+                )
+                for node in self.nodes
+            ]
+        )
+        return schema.serialize_dag(dto)
 
-    def _persist_dag_update(self):
-        r = {"states": {}}
-        for node in self.nodes:
-            r["states"][node.step.get_name()] = node.step.get_state()
-        return json.dumps(r)
+    def _persist_dag_update(self, node: DAGNode) -> str:
+        dto = schema.NodeUpdateDTO(
+            node_id=node.step.get_name(),
+            state=node.step.get_state(),
+            run_ids=node.step.get_run_ids(),
+        )
+        return schema.serialize_node_update(dto)
 
     def _to_mermaid(self):
         """Convert the graph to a Mermaid diagram."""

@@ -19,6 +19,7 @@ dependencies = [
     "requests>=2.31.0",
     "pathos>=0.3.2",
     "nextmv>=0.13.1",
+    "dataclasses-json>=0.6.7",
 ]
 description = "Framework for Decision Pipeline modeling and execution"
 dynamic = [
