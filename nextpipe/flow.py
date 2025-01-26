@@ -8,9 +8,8 @@ from importlib.metadata import version
 from typing import List, Optional, Union
 
 from nextmv.cloud import Application, Client, StatusV2
-from pathos.multiprocessing import ProcessingPool as Pool
 
-from . import decorators, schema, utils
+from . import decorators, schema, threads, utils
 
 
 class DAGNode:
@@ -80,55 +79,51 @@ class FlowSpec:
 
         # Run the nodes in parallel
         tasks = {}
-        with Pool(8) as pool:
-            while open_nodes:
-                while True:
-                    # Get the first node from the open nodes which has all its predecessors done
-                    node = next(
-                        iter(
-                            filter(
-                                lambda n: all(p in closed_nodes for p in n.predecessors),
-                                open_nodes,
-                            )
-                        ),
-                        None,
-                    )
-                    if node is None:
-                        # No more nodes to run at this point. Wait for the remaining tasks to finish.
-                        break
-                    open_nodes.remove(node)
-                    # Skip the node if it is optional and the condition is not met
-                    if node.step.skip():
-                        utils.log(f"Skipping node {node.step.get_name()}")
-                        node.step.set_state("skipped")
-                        utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
-                        continue
-                    # Run the node asynchronously
-                    tasks[node] = pool.apipe(
-                        self.__run_node,
-                        node,
-                        self._get_inputs(node),
-                        self.client,
-                    )
-                    node.step.set_state("running")
+        pool = threads.Pool(8)
+        while open_nodes:
+            while True:
+                # Get the first node from the open nodes which has all its predecessors done
+                node = next(
+                    iter(
+                        filter(
+                            lambda n: all(p in closed_nodes for p in n.predecessors),
+                            open_nodes,
+                        )
+                    ),
+                    None,
+                )
+                if node is None:
+                    # No more nodes to run at this point. Wait for the remaining tasks to finish.
+                    break
+                open_nodes.remove(node)
+                # Skip the node if it is optional and the condition is not met
+                if node.step.skip():
+                    utils.log(f"Skipping node {node.step.get_name()}")
+                    node.step.set_state("skipped")
                     utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
+                    continue
+                # Run the node asynchronously
+                job = threads.Job(self.__run_node, (node, self._get_inputs(node), self.client))
+                pool.run(job)
+                tasks[node] = job
+                node.step.set_state("running")
+                utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
 
-                # Wait until at least one task is done
-                task_done = False
-                while not task_done:
-                    time.sleep(0.1)
-                    # Check if any tasks are done, if not, keep waiting
-                    for node, task in list(tasks.items()):
-                        if task.ready():
-                            # Remove task and mark successors as ready by adding them to the open list.
-                            result = task.get()
-                            self.set_result(node, result)
-                            node.step.set_state("succeeded")
-                            utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
-                            del tasks[node]
-                            task_done = True
-                            closed_nodes.add(node)
-                            open_nodes.update(node.successors)
+            # Wait until at least one task is done
+            task_done = False
+            while not task_done:
+                time.sleep(0.1)
+                # Check if any tasks are done, if not, keep waiting
+                for node, job in list(tasks.items()):
+                    if job.done:
+                        # Remove task and mark successors as ready by adding them to the open list.
+                        self.set_result(node, job.result)
+                        node.step.set_state("succeeded")
+                        utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
+                        del tasks[node]
+                        task_done = True
+                        closed_nodes.add(node)
+                        open_nodes.update(node.successors)
 
     def set_result(self, step: callable, result: object):
         self.results[step.step] = result
@@ -206,7 +201,7 @@ class FlowGraph:
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
         utils.log(mermaid)
-        mermaid_url = f'https://mermaid.ink/svg/{base64.b64encode(mermaid.encode("utf8")).decode("ascii")}?theme=dark'
+        mermaid_url = f"https://mermaid.ink/svg/{base64.b64encode(mermaid.encode('utf8')).decode('ascii')}?theme=dark"
         utils.log(f"Mermaid URL: {mermaid_url}")
 
     def __create_graph(self, flow_spec):
