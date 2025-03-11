@@ -1,7 +1,7 @@
-name: python test
+name: test
 on: [push]
 jobs:
-  python-test:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
