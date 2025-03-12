@@ -1,6 +1,6 @@
 from enum import Enum
 from functools import wraps
-from typing import Callable, Dict, List
+from typing import Callable
 
 from pathos.multiprocessing import ProcessingPool as Pool
 
@@ -57,7 +57,7 @@ class Step:
     def is_app(self):
         return self.type == StepType.APP
 
-    def set_run_ids(self, run_ids: List[str]):
+    def set_run_ids(self, run_ids: list[str]):
         self.run_ids = run_ids
 
     def get_run_ids(self):
@@ -65,7 +65,7 @@ class Step:
 
 
 class Needs:
-    def __init__(self, predecessors: List[callable]):
+    def __init__(self, predecessors: list[callable]):
         self.predecessors = predecessors
 
     def __repr__(self):
@@ -94,7 +94,7 @@ class App:
         app_id: str,
         instance_id: str = "devint",
         input_type: InputType = InputType.JSON,
-        parameters: Dict[str, any] = None,
+        parameters: dict[str, any] = None,
     ):
         self.app_id = app_id
         self.instance_id = instance_id
@@ -105,7 +105,7 @@ class App:
         return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type})"
 
 
-def needs(predecessors: List[callable]):
+def needs(predecessors: list[callable]):
     def decorator(function):
         function.step.needs = Needs(predecessors)
         return function
@@ -141,7 +141,7 @@ def repeat(repetitions: int):
 def app(
     app_id: str,
     instance_id: str = "devint",
-    parameters: Dict[str, any] = None,
+    parameters: dict[str, any] = None,
     input_type: InputType = InputType.JSON,
 ):
     def decorator(function):

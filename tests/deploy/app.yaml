@@ -1,0 +1,7 @@
+type: python
+runtime: ghcr.io/nextmv-io/runtime/python:3.11
+files:
+    - main.py
+    - key.json
+python:
+    pip-requirements: requirements.txt

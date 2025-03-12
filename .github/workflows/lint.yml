@@ -1,11 +1,11 @@
-name: python test
+name: lint
 on: [push]
 jobs:
-  python-test:
+  lint:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: git clone
         uses: actions/checkout@v4
@@ -20,5 +20,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
 
-      - name: unit tests
-        run: python -m unittest
+      - name: lint with ruff
+        run: ruff check --output-format=github .

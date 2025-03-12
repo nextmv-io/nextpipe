@@ -5,7 +5,7 @@ import inspect
 import io
 import time
 from importlib.metadata import version
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from nextmv.cloud import Application, Client, StatusV2
 
@@ -17,13 +17,13 @@ class DAGNode:
         self.step_function = step_function
         self.step = step_definition
         self.docstring = docstring
-        self.successors: List[DAGNode] = []
+        self.successors: list[DAGNode] = []
 
     def __repr__(self):
         return f"DAGNode({self.step_function.name})"
 
 
-def check_cycle(nodes: List[DAGNode]):
+def check_cycle(nodes: list[DAGNode]):
     """
     Checks the given DAG for cycles and returns nodes that are part of a cycle.
     """
@@ -131,7 +131,7 @@ class FlowSpec:
     def get_result(self, step: callable) -> Union[object, None]:
         return self.results.get(step.step)
 
-    def _get_inputs(self, node: DAGNode) -> List[object]:
+    def _get_inputs(self, node: DAGNode) -> list[object]:
         return (
             [self.get_result(predecessor) for predecessor in node.step.needs.predecessors]
             if node.step.is_needs()
@@ -139,7 +139,7 @@ class FlowSpec:
         )
 
     @staticmethod
-    def __run_node(node: DAGNode, inputs: List[object], client: Client) -> Union[List[object], object, None]:
+    def __run_node(node: DAGNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
         utils.log(f"Running node {node.step.get_name()}")
 
         # Run the step
@@ -304,7 +304,7 @@ class FlowGraph:
 
 
 class StepVisitor(ast.NodeVisitor):
-    def __init__(self, nodes: List[DAGNode], flow: FlowSpec):
+    def __init__(self, nodes: list[DAGNode], flow: FlowSpec):
         self.nodes = nodes
         self.flow = flow
         super().__init__()

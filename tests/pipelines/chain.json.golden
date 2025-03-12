@@ -1,0 +1,7 @@
+{
+    "echo": {
+        "hello": "world!",
+        "prepared": true,
+        "enhanced": true
+    }
+}
