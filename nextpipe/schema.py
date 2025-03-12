@@ -1,6 +1,5 @@
 import base64
 import dataclasses
-from typing import List
 
 import dataclasses_json
 
@@ -12,7 +11,7 @@ class NodeUpdateDTO:
     """The ID of the node to update."""
     state: str
     """The state of the node."""
-    run_ids: List[str] = dataclasses.field(default_factory=list)
+    run_ids: list[str] = dataclasses.field(default_factory=list)
     """The ID of the associated run (if any)."""
 
 
@@ -27,14 +26,14 @@ class NodeDTO:
     """The name of the step (func)."""
     docs: str
     """The doc string of the step."""
-    successors: List[str]
+    successors: list[str]
     """The IDs of the nodes that depend on this node."""
 
 
 @dataclasses_json.dataclass_json
 @dataclasses.dataclass
 class DAGDTO:
-    nodes: List[NodeDTO]
+    nodes: list[NodeDTO]
     """The nodes in the DAG."""
 
 
