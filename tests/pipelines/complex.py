@@ -53,7 +53,9 @@ class Flow(FlowSpec):
         values.sort()
         nextmv.log(f"Values: {values}")
 
-        return results[best_solution_idx]
+        # For test stability reasons, we always return the or-tools result
+        _ = results.pop(best_solution_idx)
+        return result_ortools
 
 
 def main():
