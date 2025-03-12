@@ -18,8 +18,6 @@ def _create_key_file(path: str):
 
 class TestPlatform(unittest.TestCase):
     def test_platform(self):
-        # Skip test until lambda is officially supported
-        return
         try:
             # Generate a random APP_ID
             app = None
@@ -45,8 +43,9 @@ class TestPlatform(unittest.TestCase):
             # Run the app
             r = random.randint(0, 100)
             result = app.new_run_with_result(input={"random": r})
-            self.assertFalse(hasattr(result, "error_log"))
+            self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
             self.assertEqual(result.output["echo"]["enhanced"], True)
+            self.assertEqual(result.output["echo"]["prepared"], True)
             self.assertEqual(result.output["echo"]["random"], r)
         finally:
             # Make sure to delete the app
