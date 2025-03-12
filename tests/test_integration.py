@@ -18,7 +18,7 @@ def _create_key_file(path: str):
 
 class TestPlatform(unittest.TestCase):
     def test_platform(self):
-        # Skip test for now
+        # Skip test until lambda is officially supported
         return
         try:
             # Generate a random APP_ID
