@@ -2,6 +2,7 @@ import os
 import os.path
 import random
 import unittest
+from dataclasses import replace
 
 import goldie
 from nextmv import cloud
@@ -59,15 +60,8 @@ class TestExample(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), "pipelines")
         _create_key_file(path)
 
-        # Define golden file tests
-        config = goldie.ConfigDirectoryTest(
-            # We want to test all JSON files in the data directory.
-            explicit_files=[
-                goldie.TestDefinition(
-                    input_file=os.path.join(path, "chain.json"),
-                    extra_args=[("pipeline", os.path.join(path, "chain.py"))],
-                )
-            ],
+        # Create base configuration
+        config = goldie.ConfigFileTest(
             run_configuration=goldie.ConfigRun(
                 # We simply run the script in this directory.
                 cmd="python",
@@ -82,7 +76,33 @@ class TestExample(unittest.TestCase):
                 comparison_type=goldie.ComparisonType.JSON,
             ),
         )
-        goldie.directory.run_unittest(self, config)
+
+        # CHAIN
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "chain.json"),
+                extra_args=[("pipeline", os.path.join(path, "chain.py"))],
+            ),
+            configuration=config,
+        )
+
+        # COMPLEX
+        config_complex = replace(config)
+        config_complex.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$.statistics.result.duration", value="0.123"),
+                goldie.JsonReplacement(path="$.statistics.run.duration", value="0.123"),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "complex.json"),
+                extra_args=[("pipeline", os.path.join(path, "complex.py"))],
+            ),
+            configuration=config_complex,
+        )
 
 
 if __name__ == "__main__":

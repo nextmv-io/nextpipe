@@ -56,7 +56,7 @@ def wait_for_runs(
                 StatusV2.failed,
                 StatusV2.canceled,
             ]:
-                raise RuntimeError(f"Run {run_id} {run_info.metadata.status_v2}")
+                raise RuntimeError(f"Run {run_id} {run_info.metadata.status_v2}: {run_info.metadata.error}")
 
         time.sleep(backoff)
         backoff = min(backoff * 2, max_backoff)
