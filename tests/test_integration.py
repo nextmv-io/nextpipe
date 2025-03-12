@@ -43,7 +43,8 @@ class TestPlatform(unittest.TestCase):
 
             # Run the app
             r = random.randint(0, 100)
-            result = app.new_run_with_result(input={"random": r})
+            polling_opts = cloud.PollingOptions(max_tries=500, max_duration=60)
+            result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
             self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
             self.assertEqual(result.output["echo"]["enhanced"], True)
             self.assertEqual(result.output["echo"]["prepared"], True)
