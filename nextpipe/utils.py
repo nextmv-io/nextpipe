@@ -1,7 +1,6 @@
 import sys
 import time
 from functools import wraps
-from typing import Dict, List
 
 from nextmv.cloud import Application, RunResult, StatusV2
 
@@ -24,7 +23,7 @@ def wrap_func(function):
     return func_wrapper
 
 
-def convert_to_string_values(input_dict: Dict[str, any]) -> Dict[str, str]:
+def convert_to_string_values(input_dict: dict[str, any]) -> dict[str, str]:
     """
     Converts all values of the given dictionary to strings.
     """
@@ -36,10 +35,10 @@ _INFINITE_TIMEOUT = sys.maxsize
 
 def wait_for_runs(
     app: Application,
-    run_ids: List[str],
+    run_ids: list[str],
     timeout: int = _INFINITE_TIMEOUT,
     max_backoff: int = 30,
-) -> List[RunResult]:
+) -> list[RunResult]:
     """
     Wait until all runs with the given IDs are finished.
     """

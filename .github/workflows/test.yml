@@ -1,11 +1,11 @@
-name: python lint
+name: test
 on: [push]
 jobs:
-  python-lint:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: git clone
         uses: actions/checkout@v4
@@ -20,5 +20,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
 
-      - name: lint with ruff
-        run: ruff check --output-format=github .
+      - name: unit tests
+        env:
+          NEXTMV_API_KEY_NEXTPIPE: ${{ secrets.NEXTMV_API_KEY_NEXTPIPE }}
+        run: python -m unittest
