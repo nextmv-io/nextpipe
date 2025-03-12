@@ -24,6 +24,9 @@ class TestPlatform(unittest.TestCase):
             app = None
             APP_ID = "int-test-" + "".join(random.choices("0123456789", k=8))
 
+            # Log test app id
+            print(f"Test app id: {APP_ID}")
+
             # Create app for testing
             app = cloud.Application.new(CLIENT, APP_ID, APP_ID)
             self.assertEqual(app.id, APP_ID)
