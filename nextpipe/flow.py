@@ -1,6 +1,5 @@
 import ast
 import base64
-import collections
 import inspect
 import io
 import time
@@ -9,69 +8,63 @@ from typing import Optional, Union
 
 from nextmv.cloud import Application, Client, StatusV2
 
-from . import decorators, schema, threads, utils
+from . import decorators, graph, threads, uplink, utils
 
 
-class DAGNode:
-    def __init__(self, step_function: callable, step_definition: decorators.Step, docstring: str):
+class FlowStep:
+    def __init__(
+        self,
+        step_function: callable,
+        step_definition: decorators.Step,
+        docstring: str,
+    ):
         self.step_function = step_function
         self.step = step_definition
         self.docstring = docstring
-        self.successors: list[DAGNode] = []
+        self.successors: list[FlowStep] = []
 
     def __repr__(self):
         return f"DAGNode({self.step_function.name})"
 
 
-def check_cycle(nodes: list[DAGNode]):
-    """
-    Checks the given DAG for cycles and returns nodes that are part of a cycle.
-    """
-    # Step 1: Calculate in-degree (number of incoming edges) for each node
-    in_degree = {node: 0 for node in nodes}
+class FlowNode:
+    def __init__(self, parent: FlowStep, index: int):
+        self.parent = parent
+        self.index = index
+        self.id = f"{parent.step.get_id()}_{index}"
+        self.status: str = "pending"
+        self.successors: list[FlowNode] = []
+        self.run_id: str = None
 
-    for node in nodes:
-        for successor in node.successors:
-            in_degree[successor] += 1
-
-    # Step 2: Initialize a queue with all nodes that have in-degree 0
-    queue = collections.deque([node for node in nodes if in_degree[node] == 0])
-
-    # Number of processed nodes
-    processed_count = 0
-
-    # Step 3: Process nodes with in-degree 0
-    while queue:
-        current_node = queue.popleft()
-        processed_count += 1
-
-        # Decrease the in-degree of each successor by 1
-        for successor in current_node.successors:
-            in_degree[successor] -= 1
-            # If in-degree becomes 0, add it to the queue
-            if in_degree[successor] == 0:
-                queue.append(successor)
-
-    # Step 4: Identify the faulty nodes (those still with in-degree > 0)
-    faulty_nodes = [node for node in nodes if in_degree[node] > 0]
-
-    # If there are faulty nodes, there's a cycle
-    if faulty_nodes:
-        return True, faulty_nodes
-    else:
-        return False, None
+    def __repr__(self):
+        return f"FlowNode({self.id})"
 
 
 class FlowSpec:
-    def __init__(self, name: str, input: dict, client: Optional[Client] = None):
+    def __init__(
+        self,
+        name: str,
+        input: dict,
+        client: Optional[Client] = None,
+        uplink_config: Optional[uplink.UplinkConfig] = None,
+    ):
         self.name = name
+        self.client = Client() if client is None else client
+        self.uplink = uplink.UplinkClient(self.client, uplink_config)
+        # Create the graph
         self.graph = FlowGraph(self.__class__)
-        self.client = client if client is not None else Client()
+        # Inform platform about the graph
+        self.uplink.post_graph(self.graph._to_uplink_dag())
+        # Prepare for running the flow
         self.input = input
         self.results = {}
 
     def __repr__(self):
         return f"Flow({self.name})"
+
+    def run_pool(self):
+        pool = threads.Pool(8)
+        # TODO: implement new runner
 
     def run(self):
         open_nodes = set(self.graph.start_nodes)
@@ -98,16 +91,16 @@ class FlowSpec:
                 open_nodes.remove(node)
                 # Skip the node if it is optional and the condition is not met
                 if node.step.skip():
-                    utils.log(f"Skipping node {node.step.get_name()}")
+                    utils.log(f"Skipping node {node.step.get_id()}")
                     node.step.set_state("skipped")
-                    utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
+                    self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
                     continue
                 # Run the node asynchronously
-                job = threads.Job(self.__run_node, (node, self._get_inputs(node), self.client))
+                job = threads.Job(self.__run_node, None, (node, self._get_inputs(node), self.client))
                 pool.run(job)
                 tasks[node] = job
                 node.step.set_state("running")
-                utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
+                self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
 
             # Wait until at least one task is done
             task_done = False
@@ -119,7 +112,7 @@ class FlowSpec:
                         # Remove task and mark successors as ready by adding them to the open list.
                         self.set_result(node, job.result)
                         node.step.set_state("succeeded")
-                        utils.log("NEXTPIPE_DAG_UPDATE=" + self.graph._persist_dag_update(node))
+                        self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
                         del tasks[node]
                         task_done = True
                         closed_nodes.add(node)
@@ -131,7 +124,7 @@ class FlowSpec:
     def get_result(self, step: callable) -> Union[object, None]:
         return self.results.get(step.step)
 
-    def _get_inputs(self, node: DAGNode) -> list[object]:
+    def _get_inputs(self, node: FlowStep) -> list[object]:
         return (
             [self.get_result(predecessor) for predecessor in node.step.needs.predecessors]
             if node.step.is_needs()
@@ -139,8 +132,8 @@ class FlowSpec:
         )
 
     @staticmethod
-    def __run_node(node: DAGNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
-        utils.log(f"Running node {node.step.get_name()}")
+    def __run_node(node: FlowStep, inputs: list[object], client: Client) -> Union[list[object], object, None]:
+        utils.log(f"Running node {node.step.get_id()}")
 
         # Run the step
         if node.step.is_app():
@@ -153,7 +146,7 @@ class FlowSpec:
             # how to expose control over the input to the user.
             if len(inputs) > 1:
                 raise Exception(
-                    f"App steps cannot have more than one predecessor, but {node.step.get_name()} has {len(inputs)}"
+                    f"App steps cannot have more than one predecessor, but {node.step.get_id()} has {len(inputs)}"
                 )
             inputs = [
                 (
@@ -173,7 +166,7 @@ class FlowSpec:
             for output in outputs:
                 if output.metadata.status_v2 != StatusV2.succeeded:
                     raise Exception(
-                        f"Step {node.step.get_name()} failed with status {output.metadata.status_v2}: "
+                        f"Step {node.step.get_id()} failed with status {output.metadata.status_v2}: "
                         + f"{output.error_log}"
                     )
             # Unwrap the result and store it
@@ -191,13 +184,10 @@ class FlowSpec:
 
 
 class FlowGraph:
-    def __init__(self, flow_spec):
+    def __init__(self, flow_spec: FlowSpec):
         self.flow_spec = flow_spec
         self.__create_graph(flow_spec)
-        self.__debug_print_head()
-        self.__debug_print_graph()
-        # Print the DAG in persistence format
-        utils.log("NEXTPIPE_DAG=" + self._persist_dag())
+        self.__debug_print()
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
         utils.log(mermaid)
@@ -211,7 +201,7 @@ class FlowGraph:
         root = [n for n in tree if isinstance(n, ast.ClassDef) and n.name == class_name][0]
 
         # Build the graph
-        self.nodes = []
+        self.nodes: list[FlowStep] = []
         visitor = StepVisitor(self.nodes, flow_spec)
         visitor.visit(root)
 
@@ -237,43 +227,23 @@ class FlowGraph:
             if node.step.is_app() and len(node.predecessors) > 1:
                 raise Exception(
                     "App steps cannot have more than one predecessor, "
-                    + f"but {node.step.get_name()} has {len(node.predecessors)}"
+                    + f"but {node.step.get_id()} has {len(node.predecessors)}"
                 )
 
         # Check for cycles
-        cycle, cycle_nodes = check_cycle(self.nodes)
+        nodes_as_dict = {}
+        for node in self.nodes:
+            nodes_as_dict[node.step.get_id()] = [successor.step.get_id() for successor in node.successors]
+        cycle, cycle_nodes = graph.check_cycle(nodes_as_dict)
         if cycle:
             raise Exception(f"Cycle detected in the flow graph, cycle nodes: {cycle_nodes}")
-
-    def _persist_dag(self) -> str:
-        dto = schema.DAGDTO(
-            nodes=[
-                schema.NodeDTO(
-                    id=node.step.get_name(),
-                    app_id=node.step.app.app_id if node.step.is_app() else "",
-                    step_name=node.step.get_name(),
-                    docs=node.docstring,
-                    successors=[s.step.get_name() for s in node.successors],
-                )
-                for node in self.nodes
-            ]
-        )
-        return schema.serialize_dag(dto)
-
-    def _persist_dag_update(self, node: DAGNode) -> str:
-        dto = schema.NodeUpdateDTO(
-            node_id=node.step.get_name(),
-            state=node.step.get_state(),
-            run_ids=node.step.get_run_ids(),
-        )
-        return schema.serialize_node_update(dto)
 
     def _to_mermaid(self):
         """Convert the graph to a Mermaid diagram."""
         out = io.StringIO()
         out.write("graph TD\n")
         for node in self.nodes:
-            node_name = node.step.get_name()
+            node_name = node.step.get_id()
             if node.step.is_repeat():
                 out.write(f"  {node_name}{{ }}\n")
                 out.write(f"  {node_name}_join{{ }}\n")
@@ -283,20 +253,40 @@ class FlowGraph:
                     out.write(f"  {node_name} --> {node_name}_{i}\n")
                     out.write(f"  {node_name}_{i} --> {node_name}_join\n")
                 for successor in node.successors:
-                    out.write(f"  {node_name}_join --> {successor.step.get_name()}\n")
+                    out.write(f"  {node_name}_join --> {successor.step.get_id()}\n")
             else:
                 out.write(f"  {node_name}({node_name})\n")
                 for successor in node.successors:
-                    out.write(f"  {node_name} --> {successor.step.get_name()}\n")
+                    out.write(f"  {node_name} --> {successor.step.get_id()}\n")
         return out.getvalue()
 
-    def __debug_print_head(self):
+    def _to_uplink_dag(self) -> uplink.FlowDTO:
+        return uplink.FlowDTO(
+            steps=[
+                uplink.StepDTO(
+                    id=node.step.get_id(),
+                    app_id=node.step.get_app_id(),
+                    docs=node.docstring,
+                    predecessors=[s.step.get_id() for s in node.successors],
+                )
+                for node in self.nodes
+            ]
+        )
+
+    def _to_uplink_node(self, node: FlowNode) -> uplink.NodeDTO:
+        return uplink.NodeDTO(
+            id=node.id,
+            parent_id=node.parent.step.get_id(),
+            predecessor_ids=[p.id for p in node.successors],
+            status=node.status,
+            run_id=node.run_id,
+        )
+
+    def __debug_print(self):
         utils.log(f"Flow: {self.flow_spec.__name__}")
         utils.log(f"nextpipe: {version('nextpipe')}")
         utils.log(f"nextmv: {version('nextmv')}")
         utils.log("Flow graph nodes:")
-
-    def __debug_print_graph(self):
         for node in self.nodes:
             utils.log("Node:")
             utils.log(f"  Definition: {node.step}")
@@ -304,7 +294,7 @@ class FlowGraph:
 
 
 class StepVisitor(ast.NodeVisitor):
-    def __init__(self, nodes: list[DAGNode], flow: FlowSpec):
+    def __init__(self, nodes: list[FlowStep], flow: FlowSpec):
         self.nodes = nodes
         self.flow = flow
         super().__init__()
@@ -312,4 +302,4 @@ class StepVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, step_function):
         func = getattr(self.flow, step_function.name)
         if hasattr(func, "is_step"):
-            self.nodes.append(DAGNode(step_function, func.step, func.__doc__))
+            self.nodes.append(FlowStep(step_function, func.step, func.__doc__))

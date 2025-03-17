@@ -1,14 +1,15 @@
 import threading
-import time
 from typing import Callable, Optional
 
 
 class Job:
-    def __init__(self, target: Callable, args: Optional[tuple] = None):
+    def __init__(self, target: Callable, callback: Callable, args: Optional[tuple] = None):
         self.target = target
+        self.callback = callback
         self.args = args
         self.done = False
         self.result = None
+        self.error = None
 
     def run(self):
         if self.args:
@@ -28,6 +29,9 @@ class Pool:
         self.cond = threading.Condition(self.lock)
 
     def run(self, job: Job) -> None:
+        """
+        The run method submits a job to the pool. The job is executed by a worker thread.
+        """
         with self.lock:
             self.counter += 1
             thread_id = self.counter
@@ -36,10 +40,14 @@ class Pool:
         def worker(job: Job, thread_id: int):
             try:
                 job.run()
+            except Exception as e:
+                job.error = e
             finally:
                 with self.lock:
                     self.running.pop(thread_id, None)
                     self.cond.notify_all()  # Notify others that a thread is available
+                if job.callback:
+                    job.callback(job)
 
         while True:
             with self.lock:
@@ -53,23 +61,17 @@ class Pool:
                 else:
                     self.cond.wait()  # Wait until a thread is available
 
+    def wait_one(self) -> None:
+        """
+        Wait for one job to finish.
+        """
+        with self.lock:
+            self.cond.wait()
+
     def join(self) -> None:
+        """
+        Wait for all jobs to finish.
+        """
         with self.cond:
             while self.waiting or self.running:
                 self.cond.wait()  # Wait until all jobs are finished
-
-
-def test_pool():
-    def target(*args):
-        print(f"Running job with args: {args}")
-        time.sleep(0.5)  # Simulate work
-
-    pool = Pool(2)
-    for i in range(1, 7):  # Submit 6 jobs
-        pool.run(Job(target, (i,)))
-    pool.join()
-    print("All jobs completed.")
-
-
-if __name__ == "__main__":
-    test_pool()
