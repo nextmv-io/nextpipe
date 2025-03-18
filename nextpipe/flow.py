@@ -19,9 +19,10 @@ class FlowStep:
         docstring: str,
     ):
         self.step_function = step_function
-        self.step = step_definition
+        self.definition = step_definition
         self.docstring = docstring
         self.successors: list[FlowStep] = []
+        self.predecessors: list[FlowStep] = []
 
     def __repr__(self):
         return f"DAGNode({self.step_function.name})"
@@ -31,7 +32,7 @@ class FlowNode:
     def __init__(self, parent: FlowStep, index: int):
         self.parent = parent
         self.index = index
-        self.id = f"{parent.step.get_id()}_{index}"
+        self.id = f"{parent.definition.get_id()}_{index}"
         self.status: str = "pending"
         self.successors: list[FlowNode] = []
         self.run_id: str = None
@@ -67,56 +68,56 @@ class FlowSpec:
         # TODO: implement new runner
 
     def run(self):
-        open_nodes = set(self.graph.start_nodes)
-        closed_nodes = set()
+        open_steps = set(self.graph.start_steps)
+        closed_steps = set()
 
-        # Run the nodes in parallel
+        # Run the steps in parallel
         tasks = {}
         pool = threads.Pool(8)
-        while open_nodes:
+        while open_steps:
             while True:
-                # Get the first node from the open nodes which has all its predecessors done
-                node = next(
+                # Get the first step from the open steps which has all its predecessors done
+                step = next(
                     iter(
                         filter(
-                            lambda n: all(p in closed_nodes for p in n.predecessors),
-                            open_nodes,
+                            lambda n: all(p in closed_steps for p in n.predecessors),
+                            open_steps,
                         )
                     ),
                     None,
                 )
-                if node is None:
-                    # No more nodes to run at this point. Wait for the remaining tasks to finish.
+                if step is None:
+                    # No more steps to run at this point. Wait for the remaining tasks to finish.
                     break
-                open_nodes.remove(node)
-                # Skip the node if it is optional and the condition is not met
-                if node.step.skip():
-                    utils.log(f"Skipping node {node.step.get_id()}")
-                    node.step.set_state("skipped")
-                    self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
+                open_steps.remove(step)
+                # Skip the step if it is optional and the condition is not met
+                if step.definition.skip():
+                    utils.log(f"Skipping step {step.definition.get_id()}")
+                    step.definition.set_state("skipped")
+                    self.uplink.enqueue_node_update(self.graph._to_uplink_node(step))
                     continue
                 # Run the node asynchronously
-                job = threads.Job(self.__run_node, None, (node, self._get_inputs(node), self.client))
+                job = threads.Job(self.__run_step, None, (step, self._get_inputs(step), self.client))
                 pool.run(job)
-                tasks[node] = job
-                node.step.set_state("running")
-                self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
+                tasks[step] = job
+                step.definition.set_state("running")
+                self.uplink.enqueue_node_update(self.graph._to_uplink_node(step))
 
             # Wait until at least one task is done
             task_done = False
             while not task_done:
                 time.sleep(0.1)
                 # Check if any tasks are done, if not, keep waiting
-                for node, job in list(tasks.items()):
+                for step, job in list(tasks.items()):
                     if job.done:
                         # Remove task and mark successors as ready by adding them to the open list.
-                        self.set_result(node, job.result)
-                        node.step.set_state("succeeded")
-                        self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
-                        del tasks[node]
+                        self.set_result(step, job.result)
+                        step.step.set_state("succeeded")
+                        self.uplink.enqueue_node_update(self.graph._to_uplink_node(step))
+                        del tasks[step]
                         task_done = True
-                        closed_nodes.add(node)
-                        open_nodes.update(node.successors)
+                        closed_steps.add(step)
+                        open_steps.update(step.successors)
 
     def set_result(self, step: callable, result: object):
         self.results[step.step] = result
@@ -124,21 +125,21 @@ class FlowSpec:
     def get_result(self, step: callable) -> Union[object, None]:
         return self.results.get(step.step)
 
-    def _get_inputs(self, node: FlowStep) -> list[object]:
+    def _get_inputs(self, step: FlowStep) -> list[object]:
         return (
-            [self.get_result(predecessor) for predecessor in node.step.needs.predecessors]
-            if node.step.is_needs()
+            [self.get_result(predecessor) for predecessor in step.definition.needs.predecessors]
+            if step.definition.is_needs()
             else [self.input]
         )
 
     @staticmethod
-    def __run_node(node: FlowStep, inputs: list[object], client: Client) -> Union[list[object], object, None]:
-        utils.log(f"Running node {node.step.get_id()}")
+    def __run_step(step: FlowStep, inputs: list[object], client: Client) -> Union[list[object], object, None]:
+        utils.log(f"Running step {step.definition.get_id()}")
 
         # Run the step
-        if node.step.is_app():
-            app_step = node.step.app
-            repetitions = node.step.repeat.repetitions if node.step.is_repeat() else 1
+        if step.definition.is_app():
+            app_step = step.definition.app
+            repetitions = step.definition.repeat.repetitions if step.definition.is_repeat() else 1
             # Prepare the input for the app
             # TODO: We only support one predecessor for app steps for now. This may
             # change in the future. We may want to support multiple predecessors for
@@ -146,7 +147,7 @@ class FlowSpec:
             # how to expose control over the input to the user.
             if len(inputs) > 1:
                 raise Exception(
-                    f"App steps cannot have more than one predecessor, but {node.step.get_id()} has {len(inputs)}"
+                    f"App steps cannot have more than one predecessor, but {step.definition.get_id()} has {len(inputs)}"
                 )
             inputs = [
                 (
@@ -160,26 +161,26 @@ class FlowSpec:
             app = Application(client=client, id=app_step.app_id, default_instance_id=app_step.instance_id)
             # Run the app (or multiple runs if it is a repeat step)
             run_ids = [app.new_run(*i[0], **i[1]) for i in inputs]
-            node.step.set_run_ids(run_ids)
+            step.definition.set_run_ids(run_ids)
             outputs = utils.wait_for_runs(app=app, run_ids=run_ids)
             # Check if all runs were successful
             for output in outputs:
                 if output.metadata.status_v2 != StatusV2.succeeded:
                     raise Exception(
-                        f"Step {node.step.get_id()} failed with status {output.metadata.status_v2}: "
+                        f"Step {step.definition.get_id()} failed with status {output.metadata.status_v2}: "
                         + f"{output.error_log}"
                     )
             # Unwrap the result and store it
             # TODO: We may want to store the full RunResult object in certain cases.
             # Maybe this can become a parameter of the step decorator.
             outputs = [output.output for output in outputs]
-            return outputs if node.step.is_repeat() else outputs[0]
+            return outputs if step.definition.is_repeat() else outputs[0]
         else:
-            spec = inspect.getfullargspec(node.step.function)
+            spec = inspect.getfullargspec(step.definition.function)
             if len(spec.args) == 0:
-                output = node.step.function()
+                output = step.definition.function()
             else:
-                output = node.step.function(*inputs)
+                output = step.definition.function(*inputs)
             return output
 
 
@@ -201,82 +202,82 @@ class FlowGraph:
         root = [n for n in tree if isinstance(n, ast.ClassDef) and n.name == class_name][0]
 
         # Build the graph
-        self.nodes: list[FlowStep] = []
-        visitor = StepVisitor(self.nodes, flow_spec)
+        self.steps: list[FlowStep] = []
+        visitor = StepVisitor(self.steps, flow_spec)
         visitor.visit(root)
 
-        # Init nodes for all steps
-        nodes_by_step = {node.step: node for node in self.nodes}
-        for node in self.nodes:
-            node.predecessors = []
-            node.successors = []
+        # Init steps for all step definitions
+        steps_by_definition = {step.definition: step for step in self.steps}
+        for step in self.steps:
+            step.predecessors = []
+            step.successors = []
 
-        for node in self.nodes:
-            if not node.step.is_needs():
+        for step in self.steps:
+            if not step.definition.is_needs():
                 continue
-            for predecessor in node.step.needs.predecessors:
-                predecessor_node = nodes_by_step[predecessor.step]
-                node.predecessors.append(predecessor_node)
-                predecessor_node.successors.append(node)
+            for predecessor in step.definition.needs.predecessors:
+                predecessor_node = steps_by_definition[predecessor.step]
+                step.predecessors.append(predecessor_node)
+                predecessor_node.successors.append(step)
 
-        self.start_nodes = [node for node in self.nodes if not node.predecessors]
+        self.start_steps = [step for step in self.steps if not step.predecessors]
 
         # Make sure that all app steps have at most one predecessor.
         # TODO: This may change in the future. See other comment about it in this file.
-        for node in self.nodes:
-            if node.step.is_app() and len(node.predecessors) > 1:
+        for step in self.steps:
+            if step.definition.is_app() and len(step.predecessors) > 1:
                 raise Exception(
                     "App steps cannot have more than one predecessor, "
-                    + f"but {node.step.get_id()} has {len(node.predecessors)}"
+                    + f"but {step.definition.get_id()} has {len(step.predecessors)}"
                 )
 
         # Check for cycles
-        nodes_as_dict = {}
-        for node in self.nodes:
-            nodes_as_dict[node.step.get_id()] = [successor.step.get_id() for successor in node.successors]
-        cycle, cycle_nodes = graph.check_cycle(nodes_as_dict)
+        steps_as_dict = {}
+        for step in self.steps:
+            steps_as_dict[step.definition.get_id()] = [successor.definition.get_id() for successor in step.successors]
+        cycle, cycle_steps = graph.check_cycle(steps_as_dict)
         if cycle:
-            raise Exception(f"Cycle detected in the flow graph, cycle nodes: {cycle_nodes}")
+            raise Exception(f"Cycle detected in the flow graph, cycle steps: {cycle_steps}")
 
     def _to_mermaid(self):
         """Convert the graph to a Mermaid diagram."""
         out = io.StringIO()
         out.write("graph TD\n")
-        for node in self.nodes:
-            node_name = node.step.get_id()
-            if node.step.is_repeat():
-                out.write(f"  {node_name}{{ }}\n")
-                out.write(f"  {node_name}_join{{ }}\n")
-                repetitions = node.step.repeat.repetitions
+        for step in self.steps:
+            id = step.definition.get_id()
+            if step.definition.is_repeat():
+                out.write(f"  {id}{{ }}\n")
+                out.write(f"  {id}_join{{ }}\n")
+                repetitions = step.definition.repeat.repetitions
                 for i in range(repetitions):
-                    out.write(f"  {node_name}_{i}({node_name}_{i})\n")
-                    out.write(f"  {node_name} --> {node_name}_{i}\n")
-                    out.write(f"  {node_name}_{i} --> {node_name}_join\n")
-                for successor in node.successors:
-                    out.write(f"  {node_name}_join --> {successor.step.get_id()}\n")
+                    out.write(f"  {id}_{i}({id}_{i})\n")
+                    out.write(f"  {id} --> {id}_{i}\n")
+                    out.write(f"  {id}_{i} --> {id}_join\n")
+                for successor in step.successors:
+                    out.write(f"  {id}_join --> {successor.definition.get_id()}\n")
             else:
-                out.write(f"  {node_name}({node_name})\n")
-                for successor in node.successors:
-                    out.write(f"  {node_name} --> {successor.step.get_id()}\n")
+                out.write(f"  {id}({id})\n")
+                for successor in step.successors:
+                    out.write(f"  {id} --> {successor.definition.get_id()}\n")
         return out.getvalue()
 
     def _to_uplink_dag(self) -> uplink.FlowDTO:
         return uplink.FlowDTO(
             steps=[
                 uplink.StepDTO(
-                    id=node.step.get_id(),
-                    app_id=node.step.get_app_id(),
-                    docs=node.docstring,
-                    predecessors=[s.step.get_id() for s in node.successors],
+                    id=step.definition.get_id(),
+                    app_id=step.definition.get_app_id(),
+                    docs=step.docstring,
+                    predecessors=[s.definition.get_id() for s in step.successors],
                 )
-                for node in self.nodes
+                for step in self.steps
             ]
         )
 
     def _to_uplink_node(self, node: FlowNode) -> uplink.NodeDTO:
         return uplink.NodeDTO(
             id=node.id,
-            parent_id=node.parent.step.get_id(),
+            parent_id=node.parent.definition.get_id(),
             predecessor_ids=[p.id for p in node.successors],
             status=node.status,
             run_id=node.run_id,
@@ -286,20 +287,20 @@ class FlowGraph:
         utils.log(f"Flow: {self.flow_spec.__name__}")
         utils.log(f"nextpipe: {version('nextpipe')}")
         utils.log(f"nextmv: {version('nextmv')}")
-        utils.log("Flow graph nodes:")
-        for node in self.nodes:
-            utils.log("Node:")
-            utils.log(f"  Definition: {node.step}")
-            utils.log(f"  Docstring: {node.docstring}")
+        utils.log("Flow graph steps:")
+        for step in self.steps:
+            utils.log("Step:")
+            utils.log(f"  Definition: {step.definition}")
+            utils.log(f"  Docstring: {step.docstring}")
 
 
 class StepVisitor(ast.NodeVisitor):
-    def __init__(self, nodes: list[FlowStep], flow: FlowSpec):
-        self.nodes = nodes
+    def __init__(self, steps: list[FlowStep], flow: FlowSpec):
+        self.steps = steps
         self.flow = flow
         super().__init__()
 
     def visit_FunctionDef(self, step_function):
         func = getattr(self.flow, step_function.name)
         if hasattr(func, "is_step"):
-            self.nodes.append(FlowStep(step_function, func.step, func.__doc__))
+            self.steps.append(FlowStep(step_function, func.step, func.__doc__))

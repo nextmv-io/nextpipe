@@ -32,5 +32,5 @@ class TestLogger(unittest.TestCase):
         uplink = UplinkClient(UplinkConfig())
         uplink.run_async()
         uplink.post_graph(flow.graph)
-        uplink.enqueue_node_update(flow.graph.nodes[0])
+        uplink.enqueue_node_update(flow.graph.steps[0])
         time.sleep(1)
