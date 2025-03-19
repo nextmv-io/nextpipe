@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 from nextmv.cloud import Application, Client, StatusV2
 
-from . import config, decorators, graph, threads, uplink, utils
+from . import config, decorators, graph, schema, threads, uplink, utils
 
 
 class FlowStep:
@@ -282,11 +282,68 @@ class Runner:
                 self.fail = True
                 self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
 
-    def __create_job(self, step: FlowStep, node: FlowNode, inputs: list[any] | any) -> threads.Job:
+    @staticmethod
+    def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
+        utils.log(f"Running node {node.id}")
+
+        # Run the step
+        if node.parent.definition.is_app():
+            app_step = node.parent.definition.app
+            # Prepare the input for the app
+            # TODO: We only support one predecessor for app steps for now. This may
+            # change in the future. We may want to support multiple predecessors for
+            # app steps. However, we need to think about how to handle the input and
+            # how to expose control over the input to the user.
+            if len(inputs) > 1:
+                raise Exception(f"App steps cannot have more than one predecessor, but {node.id} has {len(inputs)}")
+            if isinstance(inputs[0], schema.AppRunConfig):
+                # If the input is already an AppRunConfig, we can use it directly.
+                app_run_config = inputs[0]
+            else:
+                # If the input is not an AppRunConfig, we need to create one.
+                app_run_config = schema.AppRunConfig(inputs[0], app_step.parameters)
+            input = [
+                (
+                    [],  # No nameless arguments
+                    {  # We use the named arguments to pass the user arguments to the run function
+                        "input": app_run_config.input,
+                        "options": app_run_config.options.to_dict(),
+                    },
+                )
+            ]
+            # Prepare the application itself.
+            app = Application(
+                client=client,
+                id=app_step.app_id,
+                default_instance_id=app_step.instance_id,
+            )
+            # Run the application
+            run_id = app.new_run(*input[0], **input[1])
+            node.run_id = run_id
+            output = utils.wait_for_runs(app=app, run_ids=[run_id])[0]
+            # Check if all runs were successful
+            if output.metadata.status_v2 != StatusV2.succeeded:
+                raise Exception(f"Node {node.id} failed with status {output.metadata.status_v2}: {output.error_log}")
+            # Unwrap the result and return it
+            return output.output
+        else:
+            spec = inspect.getfullargspec(node.parent.definition.function)
+            if len(spec.args) == 0:
+                output = node.parent.definition.function()
+            else:
+                output = node.parent.definition.function(*inputs)
+            return output
+
+    def __create_job(self, node: FlowNode, inputs: list[any] | any) -> threads.Job:
         # Convert input to list, if it is not already a list
         inputs = inputs if isinstance(inputs, list) else [inputs]
         # Create the job
-        return threads.Job(step.step_function, self.__node_callback, inputs, node)
+        return threads.Job(
+            target=self.__run_step,
+            callback=self.__node_callback,
+            args=(node, inputs, self.graph.flow_spec.client),
+            reference=node,
+        )
 
     def run(self):
         # Start communicating updates to the platform
@@ -335,7 +392,7 @@ class Runner:
                 inputs = self.__prepare_inputs(step)
                 for i, input in enumerate(inputs):
                     node = FlowNode(step, i)
-                    job = self.__create_job(step, node, input)
+                    job = self.__create_job(node, input)
                     self.pool.run(job)
                     step.nodes.append(node)
                     self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
@@ -352,54 +409,3 @@ class Runner:
                         closed_steps.add(step)
                         running_steps.remove(step)
                         open_steps.update(step.successors)
-
-    @staticmethod
-    def __run_step(step: FlowStep, inputs: list[object], client: Client) -> Union[list[object], object, None]:
-        utils.log(f"Running step {step.definition.get_id()}")
-
-        # Run the step
-        if step.definition.is_app():
-            app_step = step.definition.app
-            repetitions = step.definition.repeat.repetitions if step.definition.is_repeat() else 1
-            # Prepare the input for the app
-            # TODO: We only support one predecessor for app steps for now. This may
-            # change in the future. We may want to support multiple predecessors for
-            # app steps. However, we need to think about how to handle the input and
-            # how to expose control over the input to the user.
-            if len(inputs) > 1:
-                raise Exception(
-                    f"App steps cannot have more than one predecessor, but {step.definition.get_id()} has {len(inputs)}"
-                )
-            inputs = [
-                (
-                    [],  # No nameless arguments
-                    {  # We use the named arguments to pass the user arguments to the run function
-                        "input": inputs[0],
-                        "options": app_step.parameters,
-                    },
-                )
-            ] * repetitions
-            app = Application(client=client, id=app_step.app_id, default_instance_id=app_step.instance_id)
-            # Run the app (or multiple runs if it is a repeat step)
-            run_ids = [app.new_run(*i[0], **i[1]) for i in inputs]
-            step.definition.set_run_ids(run_ids)
-            outputs = utils.wait_for_runs(app=app, run_ids=run_ids)
-            # Check if all runs were successful
-            for output in outputs:
-                if output.metadata.status_v2 != StatusV2.succeeded:
-                    raise Exception(
-                        f"Step {step.definition.get_id()} failed with status {output.metadata.status_v2}: "
-                        + f"{output.error_log}"
-                    )
-            # Unwrap the result and store it
-            # TODO: We may want to store the full RunResult object in certain cases.
-            # Maybe this can become a parameter of the step decorator.
-            outputs = [output.output for output in outputs]
-            return outputs if step.definition.is_repeat() else outputs[0]
-        else:
-            spec = inspect.getfullargspec(step.definition.function)
-            if len(spec.args) == 0:
-                output = step.definition.function()
-            else:
-                output = step.definition.function(*inputs)
-            return output
