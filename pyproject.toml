@@ -63,6 +63,8 @@ lint.select = [
     "UP",  # pyupgrade
 ]
 line-length = 120
+[tool.ruff.lint.mccabe]
+max-complexity = 20
 
 [tool.hatch.version]
 path = "nextpipe/__about__.py"

@@ -54,6 +54,9 @@ class Step:
     def is_repeat(self):
         return hasattr(self, "repeat")
 
+    def get_repetitions(self):
+        return self.repeat.repetitions if self.is_repeat() else 1
+
     def is_app(self):
         return self.type == StepType.APP
 
@@ -65,6 +68,12 @@ class Step:
 
     def get_run_ids(self):
         return self.run_ids
+
+    def is_foreach(self):
+        return hasattr(self, "foreach")
+
+    def is_join(self):
+        return hasattr(self, "join")
 
 
 def step(function):
@@ -133,6 +142,38 @@ def repeat(repetitions: int):
         wrapper.step.repeat = Repeat(repetitions)
 
         return wrapper
+
+    return decorator
+
+
+class Foreach:
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "StepForeach()"
+
+
+def foreach():
+    def decorator(function):
+        function.step.foreach = Foreach()
+        return function
+
+    return decorator
+
+
+class Join:
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "StepJoin()"
+
+
+def join():
+    def decorator(function):
+        function.step.join = Join()
+        return function
 
     return decorator
 

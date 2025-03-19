@@ -1,12 +1,20 @@
+import multiprocessing
 import threading
 from typing import Callable, Optional
 
 
 class Job:
-    def __init__(self, target: Callable, callback: Callable, args: Optional[tuple] = None):
+    def __init__(
+        self,
+        target: Callable,
+        callback: Callable,
+        args: Optional[list] = None,
+        reference: any = None,
+    ):
         self.target = target
         self.callback = callback
         self.args = args
+        self.reference = reference
         self.done = False
         self.result = None
         self.error = None
@@ -20,7 +28,9 @@ class Job:
 
 
 class Pool:
-    def __init__(self, max_threads: int):
+    def __init__(self, max_threads: int = 0):
+        if max_threads <= 0:
+            max_threads = multiprocessing.cpu_count()
         self.max_threads = max_threads
         self.counter = 0  # Used to assign unique IDs to threads
         self.waiting = {}
