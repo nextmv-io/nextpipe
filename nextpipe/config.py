@@ -2,8 +2,6 @@ from dataclasses import dataclass
 
 from dataclasses_json import dataclass_json
 
-from . import uplink
-
 
 @dataclass_json
 @dataclass
@@ -21,8 +19,4 @@ class Configuration:
     This is used to avoid accidental combinatorial explosions due to the Cartesian product
     of inputs used when a step has multiple predecessors which are themselves repeated or
     foreach steps.
-    """
-    uplink_config: uplink.UplinkConfig = uplink.UplinkConfig()
-    """"
-    Configuration for communicating status with the platform.
     """

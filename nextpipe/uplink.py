@@ -164,6 +164,8 @@ class UplinkClient:
         """
         if self.inactive:
             return
+        if not isinstance(node, NodeDTO):
+            raise ValueError(f"Expected NodeDTO, got {type(node)}")
         with self._lock:
             self._pending_node_updates.append(node)
             self._clear_duplicated_updates()

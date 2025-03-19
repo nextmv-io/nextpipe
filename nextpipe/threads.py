@@ -1,5 +1,6 @@
 import multiprocessing
 import threading
+import traceback
 from typing import Callable, Optional
 
 
@@ -51,7 +52,7 @@ class Pool:
             try:
                 job.run()
             except Exception as e:
-                job.error = e
+                job.error = f"Error in thread {thread_id}: {e}\n{traceback.format_exc()}"
             finally:
                 with self.lock:
                     self.running.pop(thread_id, None)

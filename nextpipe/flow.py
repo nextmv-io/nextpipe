@@ -5,7 +5,7 @@ import io
 import threading
 import time
 from importlib.metadata import version
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from nextmv.cloud import Application, Client, StatusV2
 
@@ -53,12 +53,12 @@ class FlowSpec:
         self,
         name: str,
         input: dict,
-        config: Optional[config.Configuration] = None,
+        conf: Optional[config.Configuration] = None,
         client: Optional[Client] = None,
         uplink_config: Optional[uplink.UplinkConfig] = None,
     ):
         self.name = name
-        self.config = config.Configuration() if config is None else config
+        self.config = config.Configuration() if conf is None else conf
         self.client = Client() if client is None else client
         self.uplink = uplink.UplinkClient(self.client, uplink_config)
         # Create the graph
@@ -67,16 +67,26 @@ class FlowSpec:
         self.uplink.post_graph(self.graph._to_uplink_dag())
         # Prepare for running the flow
         self.input = input
-        self.results = {}
+        self.runner = Runner(
+            self,
+            self.graph,
+            self.config,
+            self.uplink,
+        )
+
+    def run(self):
+        self.runner.run()
 
     def __repr__(self):
         return f"Flow({self.name})"
 
-    def set_result(self, step: callable, result: object):
-        self.results[step.step] = result
-
     def get_result(self, step: callable) -> Union[object, None]:
-        return self.results.get(step.step)
+        if not hasattr(step, "step"):
+            raise Exception(f"Step {step} does not have a step decorator.")
+        s = self.graph.get_step(step.step)
+        if not s.done:
+            return None
+        return [n.result for n in s.nodes] if len(s.nodes) > 1 else s.nodes[0].result
 
     def _get_inputs(self, step: FlowStep) -> list[object]:
         return (
@@ -87,15 +97,18 @@ class FlowSpec:
 
 
 class FlowGraph:
-    def __init__(self, flow_spec: FlowSpec):
-        self.flow_spec = flow_spec
-        self.__create_graph(flow_spec)
+    def __init__(self, flow_spec_type: type):
+        self.flow_spec_type = flow_spec_type
+        self.__create_graph(flow_spec_type)
         self.__debug_print()
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
         utils.log(mermaid)
         mermaid_url = f"https://mermaid.ink/svg/{base64.b64encode(mermaid.encode('utf8')).decode('ascii')}?theme=dark"
         utils.log(f"Mermaid URL: {mermaid_url}")
+
+    def get_step(self, definition: decorators.Step) -> FlowStep:
+        return self.steps_by_definition[definition]
 
     def __create_graph(self, flow_spec):
         module = __import__(flow_spec.__module__)
@@ -109,7 +122,7 @@ class FlowGraph:
         visitor.visit(root)
 
         # Init steps for all step definitions
-        steps_by_definition = {step.definition: step for step in self.steps}
+        self.steps_by_definition = {step.definition: step for step in self.steps}
         for step in self.steps:
             step.predecessors = []
             step.successors = []
@@ -118,7 +131,7 @@ class FlowGraph:
             if not step.definition.is_needs():
                 continue
             for predecessor in step.definition.needs.predecessors:
-                predecessor_node = steps_by_definition[predecessor.step]
+                predecessor_node = self.steps_by_definition[predecessor.step]
                 step.predecessors.append(predecessor_node)
                 predecessor_node.successors.append(step)
 
@@ -186,7 +199,7 @@ class FlowGraph:
         )
 
     def __debug_print(self):
-        utils.log(f"Flow: {self.flow_spec.__name__}")
+        utils.log(f"Flow: {self.flow_spec_type.__name__}")
         utils.log(f"nextpipe: {version('nextpipe')}")
         utils.log(f"nextmv: {version('nextmv')}")
         utils.log("Flow graph steps:")
@@ -212,16 +225,23 @@ class StepVisitor(ast.NodeVisitor):
 
 
 class Runner:
-    def __init__(self, graph: FlowGraph, config: config.Configuration):
+    def __init__(
+        self,
+        spec: FlowSpec,
+        graph: FlowGraph,
+        config: config.Configuration,
+        uplink: uplink.UplinkClient,
+    ):
+        self.spec = spec
         self.graph = graph
-        self.uplink = uplink.UplinkClient(config.uplink_config)
+        self.uplink = uplink
         self.pool = threads.Pool(config.thread_count)
-        self.steps_complete = {}
         self.jobs = []
         self.node_idxs = {}
         self.fail = False
         self.fail_reason = None
-        self.lock = threading.Lock()
+        self.lock_fail = threading.Lock()
+        self.lock_running = threading.Lock()
 
     def __prepare_inputs(self, step: FlowStep) -> list[list[any]]:
         """
@@ -236,7 +256,7 @@ class Runner:
         """
         # If the step has no predecessors, the input is the flow input.
         if not step.predecessors:
-            return [self.graph.flow_spec.input]
+            return [self.spec.input]
         # Collect all inputs from predecessors.
         predecessor_inputs = {}
         for predecessor in step.predecessors:
@@ -258,10 +278,10 @@ class Runner:
         # If the step is a 'repeat' step, repeat the inputs for each repetition.
         if step.definition.is_repeat():
             inputs = inputs * step.definition.get_repetitions()
-        if len(inputs) > self.graph.flow_spec.config.max_step_inputs:
+        if len(inputs) > self.spec.config.max_step_inputs:
             raise Exception(
                 f"Step {step.definition.get_id()} has too many inputs ({len(inputs)}). "
-                + f"Maximum allowed is {self.graph.flow_spec.config.max_step_inputs}."
+                + f"Maximum allowed is {self.graph.flow_spec_type.config.max_step_inputs}."
             )
         return inputs
 
@@ -277,7 +297,7 @@ class Runner:
         with reference.parent.lock:
             if all(n.done for n in reference.parent.nodes):
                 reference.parent.done = True
-        with self.lock:
+        with self.lock_fail:
             if job.error is not None and not self.fail:
                 self.fail = True
                 self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
@@ -297,20 +317,21 @@ class Runner:
             if len(inputs) > 1:
                 raise Exception(f"App steps cannot have more than one predecessor, but {node.id} has {len(inputs)}")
             if isinstance(inputs[0], schema.AppRunConfig):
-                # If the input is already an AppRunConfig, we can use it directly.
-                app_run_config = inputs[0]
+                # If the input is AppRunConfig, unwrap it.
+                app_run_config: schema.AppRunConfig = inputs[0]
+                input = app_run_config.input
+                options = app_run_config.options.to_dict()
             else:
-                # If the input is not an AppRunConfig, we need to create one.
-                app_run_config = schema.AppRunConfig(inputs[0], app_step.parameters)
-            input = [
-                (
-                    [],  # No nameless arguments
-                    {  # We use the named arguments to pass the user arguments to the run function
-                        "input": app_run_config.input,
-                        "options": app_run_config.options.to_dict(),
-                    },
-                )
-            ]
+                # If the input is not AppRunConfig, we use it directly.
+                input = inputs[0]
+                options = app_step.parameters
+            run_args = (
+                [],  # No nameless arguments
+                {  # We use the named arguments to pass the user arguments to the run function
+                    "input": input,
+                    "options": options,
+                },
+            )
             # Prepare the application itself.
             app = Application(
                 client=client,
@@ -318,7 +339,7 @@ class Runner:
                 default_instance_id=app_step.instance_id,
             )
             # Run the application
-            run_id = app.new_run(*input[0], **input[1])
+            run_id = app.new_run(*run_args[0], **run_args[1])
             node.run_id = run_id
             output = utils.wait_for_runs(app=app, run_ids=[run_id])[0]
             # Check if all runs were successful
@@ -334,14 +355,14 @@ class Runner:
                 output = node.parent.definition.function(*inputs)
             return output
 
-    def __create_job(self, node: FlowNode, inputs: list[any] | any) -> threads.Job:
+    def __create_job(self, node: FlowNode, inputs: list[Any] | Any) -> threads.Job:
         # Convert input to list, if it is not already a list
         inputs = inputs if isinstance(inputs, list) else [inputs]
         # Create the job
         return threads.Job(
             target=self.__run_step,
             callback=self.__node_callback,
-            args=(node, inputs, self.graph.flow_spec.client),
+            args=(node, inputs, self.spec.client),
             reference=node,
         )
 
@@ -360,9 +381,9 @@ class Runner:
         closed_steps: set[FlowStep] = set()
 
         # Run the steps in parallel
-        while open_steps:
+        while open_steps or running_steps:
             # If there was a failure, stop running the flow
-            with self.lock:
+            with self.lock_fail:
                 if self.fail:
                     utils.log(f"Flow failed: {self.fail_reason}")
                     break
@@ -388,7 +409,8 @@ class Runner:
                     continue
                 # Run the node asynchronously
                 step.definition.set_state("running")
-                running_steps.add(step)
+                with self.lock_running:
+                    running_steps.add(step)
                 inputs = self.__prepare_inputs(step)
                 for i, input in enumerate(inputs):
                     node = FlowNode(step, i)
@@ -401,11 +423,14 @@ class Runner:
             task_done = False
             while not task_done:
                 time.sleep(0.1)
-                # Check if any tasks are done, if not, keep waiting
-                for step in running_steps:
-                    if step.done:
-                        # Remove step and mark successors as ready by adding them to the open list.
-                        task_done = True
-                        closed_steps.add(step)
+                # Check if any steps are done, if not, keep waiting
+                done_steps = []
+                with self.lock_running:
+                    done_steps = [step for step in running_steps if step.done]
+                    task_done = True
+                for step in done_steps:
+                    # Remove step and mark successors as ready by adding them to the open list.
+                    with self.lock_running:
                         running_steps.remove(step)
-                        open_steps.update(step.successors)
+                    closed_steps.add(step)
+                    open_steps.update(step.successors)
