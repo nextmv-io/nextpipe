@@ -5,17 +5,12 @@ Example of a pipeline with a fanout step (`@foreach`) that runs the same input t
 ## Graph
 
 ```mermaid
----
-config:
-  layout: elk
-  look: handDrawn
-  theme: dark
----
 graph TD
+  prepare{ }
   prepare(prepare)
-  prepare --> solve
+  prepare -- foreach --> solve
   solve(solve)
-  solve --> enhance
+  solve -- join --> enhance
   enhance(enhance)
 ```
 

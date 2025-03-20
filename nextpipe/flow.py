@@ -155,12 +155,21 @@ class FlowGraph:
         if cycle:
             raise Exception(f"Cycle detected in the flow graph, cycle steps: {cycle_steps}")
 
+    def __get_arrow(self, step: FlowStep, successor: FlowStep) -> str:
+        if step.definition.is_foreach() and not successor.definition.is_join():
+            return "-- foreach -->"
+        if not step.definition.is_foreach() and successor.definition.is_join():
+            return "-- join -->"
+        return "-->"
+
     def _to_mermaid(self):
         """Convert the graph to a Mermaid diagram."""
         out = io.StringIO()
         out.write("graph TD\n")
         for step in self.steps:
             id = step.definition.get_id()
+            if step.definition.is_foreach():
+                out.write(f"  {id}{{ }}\n")
             if step.definition.is_repeat():
                 out.write(f"  {id}{{ }}\n")
                 out.write(f"  {id}_join{{ }}\n")
@@ -170,11 +179,11 @@ class FlowGraph:
                     out.write(f"  {id} --> {id}_{i}\n")
                     out.write(f"  {id}_{i} --> {id}_join\n")
                 for successor in step.successors:
-                    out.write(f"  {id}_join --> {successor.definition.get_id()}\n")
+                    out.write(f"  {id}_join {self.__get_arrow(step, successor)} {successor.definition.get_id()}\n")
             else:
                 out.write(f"  {id}({id})\n")
                 for successor in step.successors:
-                    out.write(f"  {id} --> {successor.definition.get_id()}\n")
+                    out.write(f"  {id} {self.__get_arrow(step, successor)} {successor.definition.get_id()}\n")
         return out.getvalue()
 
     def _to_uplink_dag(self) -> uplink.FlowDTO:
