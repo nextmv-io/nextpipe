@@ -26,7 +26,7 @@ class Flow(FlowSpec):
         pass
 
     @needs(predecessors=[solve])
-    @join()  # This collects the results from the 'foreach' previous step and combines them into a list passed as the arg
+    @join()  # Collect the results from the previous 'foreach' step and combine them into a list passed as the arg
     @step
     def enhance(results: list[dict]):
         """Enhances the result."""
