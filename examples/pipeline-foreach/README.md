@@ -1,6 +1,6 @@
-# Fanout example
+# Foreach fanout example
 
-Example of a pipeline with a fanout step that runs the same input through a solve step with different app options.
+Example of a pipeline with a fanout step (`@foreach`) that runs the same input through a solve step with different app options.
 
 ## Graph
 
