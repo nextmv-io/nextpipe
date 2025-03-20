@@ -3,7 +3,7 @@ import os
 
 import nextmv
 
-from nextpipe import AppOption, AppOptions, FlowSpec, app, convert, foreach, needs, read_csv, step
+from nextpipe import AppOption, AppOptions, FlowSpec, app, convert, foreach, join, needs, read_csv, step
 
 
 class Flow(FlowSpec):
@@ -25,24 +25,23 @@ class Flow(FlowSpec):
         """Runs the model."""
         pass
 
-    @app(app_id="routing")
-    @needs(predecessors=[prepare])
-    @foreach  # This causes the step to be executed for each item in the input list
-    @prep  # This uses the function body that is normally unused as a preparation step for the app run
-    @step
-    def solve(input: dict):
-        """Runs the model."""
-        search_dive = AppOptions(AppOption("search_strategy", "dive"))
-        search_exhaustive = AppOptions(AppOption("search_strategy", "exhaustive"))
-        return (input, search_dive if len(input["stops"]) > 100 else search_exhaustive)
+    # @app(app_id="routing")
+    # @needs(predecessors=[prepare])
+    # @foreach  # This causes the step to be executed for each item in the input list
+    # @prep  # This uses the function body that is normally unused as a preparation step for the app run
+    # @step
+    # def solve(input: dict):
+    #     """Runs the model."""
+    #     search_dive = AppOptions(AppOption("search_strategy", "dive"))
+    #     search_exhaustive = AppOptions(AppOption("search_strategy", "exhaustive"))
+    #     return (input, search_dive if len(input["stops"]) > 100 else search_exhaustive)
 
     @needs(predecessors=[solve])
     @join  # This collects the results from the 'foreach' previous step and combines them into a list passed as the arg
     @step
     def enhance(results: list[dict]):
         """Enhances the result."""
-        for result in results:
-            write_csv(result)
+        return results
 
 
 def main():

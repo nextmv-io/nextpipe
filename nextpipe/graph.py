@@ -10,7 +10,7 @@ def check_cycle(node_successors: dict[str, list[str]]) -> tuple[bool, list[str]]
     faulty_nodes is a list of nodes that are part of the cycle.
     """
     # Step 1: Calculate in-degree (number of incoming edges) for each node
-    in_degree = {node: 0 for node in node_successors.keys()}
+    in_degree = dict.fromkeys(node_successors.keys(), 0)
 
     for successors in node_successors.values():
         for successor in successors:
