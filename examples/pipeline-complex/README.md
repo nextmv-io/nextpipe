@@ -40,5 +40,5 @@ graph TD
 
 ```bash
 nextmv app push -a <app-id>
-echo '{}' | nextmv app run -a <app-id> -e "8c16gb12h"
+echo '{}' | nextmv app run -a <app-id>
 ```

@@ -21,5 +21,5 @@ graph TD
 
 ```bash
 nextmv app push -a <app-id>
-echo '{"hello": "world!"}' | nextmv app run -a <app-id> -e "8c16gb12h"
+echo '{"hello": "world!"}' | nextmv app run -a <app-id>
 ```
