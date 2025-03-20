@@ -89,6 +89,7 @@ class TestLogger(unittest.TestCase):
     def test_no_uplink(self):
         flow, nodes = _create_example_flow()
         client = nextmv.cloud.Client(
+            api_key="unavailable",
             max_retries=0,
             url=f"https://unavailable.url/{random.randint(0, 1000)}",
         )
