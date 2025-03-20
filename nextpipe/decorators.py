@@ -154,7 +154,7 @@ class Foreach:
         return "StepForeach()"
 
 
-def foreach():
+def foreach(f: Callable = None):
     def decorator(function):
         function.step.foreach = Foreach()
         return function
@@ -170,7 +170,7 @@ class Join:
         return "StepJoin()"
 
 
-def join():
+def join(f: Callable = None):
     def decorator(function):
         function.step.join = Join()
         return function

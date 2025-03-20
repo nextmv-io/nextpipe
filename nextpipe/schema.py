@@ -1,7 +1,17 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-import nextmv
 from dataclasses_json import dataclass_json
+
+
+@dataclass_json
+@dataclass
+class AppOption:
+    """Option for running an app."""
+
+    name: str
+    """Key for the option."""
+    value: any
+    """Value for the option."""
 
 
 @dataclass_json
@@ -11,5 +21,5 @@ class AppRunConfig:
 
     input: dict[str, any] = None
     """Input for the app."""
-    options: nextmv.Options = nextmv.Options()
+    options: list[AppOption] = field(default_factory=list)
     """Options for running the app."""

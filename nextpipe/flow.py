@@ -279,7 +279,8 @@ class Runner:
         inputs = [list(item) for item in product(*predecessor_inputs.values())]
         # If the steps is a 'join' step, we need to combine the inputs from all predecessors.
         if step.definition.is_join():
-            inputs = [inputs]
+            # Unwrap the inputs from the list of lists.
+            inputs = [item[0] for item in inputs]
         # If the step is a 'repeat' step, repeat the inputs for each repetition.
         if step.definition.is_repeat():
             inputs = inputs * step.definition.get_repetitions()
@@ -295,17 +296,21 @@ class Runner:
         Callback function for a job. This function is called by the pool manager when a job is done.
         """
         reference: FlowNode = job.reference
+        print(f"Node {reference.id} done")
         reference.status = "succeeded" if job.error is None else "failed"
         reference.result = job.result
         reference.error = job.error
+        # Check if the job failed and mark the flow as failed if it did
+        with self.lock_fail:
+            if job.error is not None and not self.fail:
+                print(f"Node {reference.id} failed: {job.error}")
+                self.fail = True
+                self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
+        # Mark the node as done (and its parent if all nodes are done)
         reference.done = True
         with reference.parent.lock:
             if all(n.done for n in reference.parent.nodes):
                 reference.parent.done = True
-        with self.lock_fail:
-            if job.error is not None and not self.fail:
-                self.fail = True
-                self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
 
     @staticmethod
     def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
@@ -325,7 +330,7 @@ class Runner:
                 # If the input is AppRunConfig, unwrap it.
                 app_run_config: schema.AppRunConfig = inputs[0]
                 input = app_run_config.input
-                options = app_run_config.options.to_dict()
+                options = {option.name: option.value for option in app_run_config.options}
             else:
                 # If the input is not AppRunConfig, we use it directly.
                 input = inputs[0]

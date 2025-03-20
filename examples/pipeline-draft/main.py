@@ -1,43 +1,32 @@
+import copy
 import json
 import os
 
 import nextmv
+import nextmv.cloud
 
-from nextpipe import AppOption, AppOptions, FlowSpec, app, convert, foreach, join, needs, read_csv, step
+from nextpipe import AppOption, AppRunConfig, FlowSpec, app, foreach, join, needs, optional, step
 
 
 class Flow(FlowSpec):
+    @foreach()
     @step
-    def prepare(csv_files: list[str]):
+    def prepare(data: dict):
         """Prepares the data."""
-        csvs = [read_csv(f) for f in csv_files]
-        jsons = [convert(csv) for csv in csvs]
-        search_dive = AppOptions(AppOption("search_strategy", "dive"))
-        search_exhaustive = AppOptions(AppOption("search_strategy", "exhaustive"))
-        options = [search_dive if len(j["stops"]) > 100 else search_exhaustive for j in jsons]
-        return zip(csv_files, options)
+        inputs = [copy.deepcopy(data) for _ in range(3)]
+        run_configs = [AppRunConfig(input, [AppOption("param", i)]) for i, input in enumerate(inputs)]
+        return run_configs
 
-    @app(app_id="routing")
+    @app(app_id="echo")
     @needs(predecessors=[prepare])
-    @foreach  # This causes the step to be executed for each item in the input list
+    @optional(condition=lambda _: True)
     @step
     def solve():
         """Runs the model."""
         pass
 
-    # @app(app_id="routing")
-    # @needs(predecessors=[prepare])
-    # @foreach  # This causes the step to be executed for each item in the input list
-    # @prep  # This uses the function body that is normally unused as a preparation step for the app run
-    # @step
-    # def solve(input: dict):
-    #     """Runs the model."""
-    #     search_dive = AppOptions(AppOption("search_strategy", "dive"))
-    #     search_exhaustive = AppOptions(AppOption("search_strategy", "exhaustive"))
-    #     return (input, search_dive if len(input["stops"]) > 100 else search_exhaustive)
-
     @needs(predecessors=[solve])
-    @join  # This collects the results from the 'foreach' previous step and combines them into a list passed as the arg
+    @join()  # This collects the results from the 'foreach' previous step and combines them into a list passed as the arg
     @step
     def enhance(results: list[dict]):
         """Enhances the result."""

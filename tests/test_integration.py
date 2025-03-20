@@ -49,9 +49,9 @@ class TestPlatform(unittest.TestCase):
             polling_opts = cloud.PollingOptions(max_tries=500, max_duration=60)
             result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
             self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
-            self.assertEqual(result.output["echo"]["enhanced"], True)
-            self.assertEqual(result.output["echo"]["prepared"], True)
-            self.assertEqual(result.output["echo"]["random"], r)
+            self.assertEqual(result.output["echo"]["data"]["enhanced"], True)
+            self.assertEqual(result.output["echo"]["data"]["prepared"], True)
+            self.assertEqual(result.output["echo"]["data"]["random"], r)
         finally:
             # Make sure to delete the app
             if app:
