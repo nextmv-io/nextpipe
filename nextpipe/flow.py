@@ -104,6 +104,7 @@ class FlowGraph:
         self.__debug_print()
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
+        utils.log("Mermaid diagram:")
         utils.log(mermaid)
         mermaid_url = f"https://mermaid.ink/svg/{base64.b64encode(mermaid.encode('utf8')).decode('ascii')}?theme=dark"
         utils.log(f"Mermaid URL: {mermaid_url}")
@@ -305,14 +306,12 @@ class Runner:
         Callback function for a job. This function is called by the pool manager when a job is done.
         """
         reference: FlowNode = job.reference
-        print(f"Node {reference.id} done")
         reference.status = "succeeded" if job.error is None else "failed"
         reference.result = job.result
         reference.error = job.error
         # Check if the job failed and mark the flow as failed if it did
         with self.lock_fail:
             if job.error is not None and not self.fail:
-                print(f"Node {reference.id} failed: {job.error}")
                 self.fail = True
                 self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
         # Mark the node as done (and its parent if all nodes are done)

@@ -43,7 +43,9 @@ class TestLogger(unittest.TestCase):
         pool.join()
 
         self.assertIsNotNone(intercepted_exception)
-        self.assertEqual(str(intercepted_exception), "Something went wrong")
+        self.assertIsInstance(intercepted_exception, str)
+        self.assertTrue(intercepted_exception.startswith("Error in thread"))
+        self.assertIn("ValueError: Something went wrong", intercepted_exception)
 
 
 if __name__ == "__main__":

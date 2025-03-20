@@ -1,8 +1,11 @@
+import random
 import time
 import unittest
 
+import nextmv.cloud
+
 from nextpipe import FlowSpec, app, needs, step
-from nextpipe.uplink import UplinkClient, UplinkConfig
+from nextpipe.uplink import FlowDTO, NodeDTO, StepDTO, UplinkClient
 
 
 class Flow(FlowSpec):
@@ -25,12 +28,75 @@ class Flow(FlowSpec):
         return result
 
 
+def _create_example_flow() -> tuple[FlowDTO, list[NodeDTO]]:
+    steps = [
+        StepDTO(
+            id="prepare",
+            app_id=None,
+            docs="Prepares the data.",
+            predecessors=[],
+        ),
+        StepDTO(
+            id="solve",
+            app_id="echo",
+            docs="Runs the model.",
+            predecessors=["prepare"],
+        ),
+        StepDTO(
+            id="enhance",
+            app_id=None,
+            docs="Enhances the result.",
+            predecessors=["solve"],
+        ),
+    ]
+    flow = FlowDTO(
+        steps=steps,
+    )
+    nodes = [
+        NodeDTO(
+            id="prepare_0",
+            parent_id="prepare",
+            predecessor_ids=[],
+            status="succeeded",
+            run_id=None,
+        ),
+        NodeDTO(
+            id="solve_0",
+            parent_id="solve",
+            predecessor_ids=["prepare_0"],
+            status="succeeded",
+            run_id="run-123",
+        ),
+        NodeDTO(
+            id="solve_1",
+            parent_id="solve",
+            predecessor_ids=["prepare_0"],
+            status="succeeded",
+            run_id="run-124",
+        ),
+        NodeDTO(
+            id="enhance_0",
+            parent_id="enhance",
+            predecessor_ids=["solve_0", "solve_1"],
+            status="succeeded",
+            run_id=None,
+        ),
+    ]
+    return flow, nodes
+
+
 class TestLogger(unittest.TestCase):
     def test_no_uplink(self):
+        flow, nodes = _create_example_flow()
+        client = nextmv.cloud.Client(
+            max_retries=0,
+            url=f"https://unavailable.url/{random.randint(0, 1000)}",
+        )
         # Make sure that unavailable uplink connection does not break a run.
-        flow = Flow("DecisionFlow", {})
-        uplink = UplinkClient(UplinkConfig())
+        uplink = UplinkClient(client=client, config=None)
         uplink.run_async()
-        uplink.post_graph(flow.graph)
-        uplink.enqueue_node_update(flow.graph.steps[0])
-        time.sleep(1)
+        uplink.post_graph(flow)
+        uplink.enqueue_node_update(nodes[0])
+        time.sleep(0.5)
+        uplink.terminate()
+        time.sleep(0.5)
