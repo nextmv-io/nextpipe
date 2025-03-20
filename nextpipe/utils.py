@@ -47,6 +47,9 @@ def wait_for_runs(
     backoff = 1
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
+        time.sleep(backoff)
+        backoff = min(backoff * 2, max_backoff)
+
         for run_id in missing.copy():
             run_info = app.run_metadata(run_id=run_id)
             if run_info.metadata.status_v2 == StatusV2.succeeded:
@@ -57,9 +60,6 @@ def wait_for_runs(
                 StatusV2.canceled,
             ]:
                 raise RuntimeError(f"Run {run_id} {run_info.metadata.status_v2}: {run_info.metadata.error}")
-
-        time.sleep(backoff)
-        backoff = min(backoff * 2, max_backoff)
 
     if missing:
         raise TimeoutError(f"Timeout of {timeout} seconds reached while waiting.")

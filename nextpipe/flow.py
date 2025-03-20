@@ -5,6 +5,7 @@ import io
 import threading
 import time
 from importlib.metadata import version
+from itertools import product
 from typing import Any, Optional, Union
 
 from nextmv.cloud import Application, Client, StatusV2
@@ -262,16 +263,20 @@ class Runner:
         for predecessor in step.predecessors:
             predecessor_results = [res.result for res in predecessor.nodes]
             if predecessor.definition.is_foreach():
-                # If the predecessor is a 'foreach' step, we need to disassemble the list.
-                predecessor_results = [item for sublist in predecessor_results for item in sublist]
+                # Make sure the result is in fact a list.
+                if len(predecessor_results) != 1 or not isinstance(predecessor_results[0], list):
+                    raise Exception(
+                        f"Predecessor step {predecessor.definition.get_id()} declared as 'foreach' "
+                        + f"must return a list, but returned {predecessor_results}"
+                    )
+                # If the predecessor is a 'foreach' step, we need to create a result for each item.
+                predecessor_results = predecessor_results[0]
+            if predecessor.definition.is_repeat():
+                # If the predecessor is a 'repeat' step, we need to collect the results in a list.
+                predecessor_results = [predecessor_results]
             predecessor_inputs[predecessor] = predecessor_results
         # Combine inputs from predecessors (cartesian product).
-        inputs = []
-        for predecessor in step.predecessors:
-            if not inputs:
-                inputs = [[item] for item in predecessor_inputs[predecessor]]
-            else:
-                inputs = [i + [item] for i in inputs for item in predecessor_inputs[predecessor]]
+        inputs = [list(item) for item in product(*predecessor_inputs.values())]
         # If the steps is a 'join' step, we need to combine the inputs from all predecessors.
         if step.definition.is_join():
             inputs = [inputs]
