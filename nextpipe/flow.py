@@ -373,7 +373,7 @@ class Runner:
                 output = node.parent.definition.function(*inputs)
             return output
 
-    def __create_job(self, node: FlowNode, inputs: list[Any] | Any) -> threads.Job:
+    def __create_job(self, node: FlowNode, inputs: Union[list[Any], Any]) -> threads.Job:
         # Convert input to list, if it is not already a list
         inputs = inputs if isinstance(inputs, list) else [inputs]
         # Create the job
