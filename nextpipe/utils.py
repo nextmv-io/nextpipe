@@ -44,7 +44,7 @@ def wait_for_runs(
     """
     # Wait until all runs are finished or the timeout is reached
     missing = set(run_ids)
-    backoff = 1
+    backoff = 2
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
         time.sleep(backoff)
