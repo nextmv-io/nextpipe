@@ -15,7 +15,10 @@
                 "duration": 0.123
             }
         },
-        "assets": []
+        "assets": [],
+        "stats": {
+            "count": 1
+        }
     },
     {
         "solution": {
@@ -33,7 +36,10 @@
                 "duration": 0.123
             }
         },
-        "assets": []
+        "assets": [],
+        "stats": {
+            "count": 1
+        }
     },
     {
         "solution": {
@@ -51,6 +57,9 @@
                 "duration": 0.123
             }
         },
-        "assets": []
+        "assets": [],
+        "stats": {
+            "count": 1
+        }
     }
 ]

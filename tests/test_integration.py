@@ -93,9 +93,9 @@ class TestExample(unittest.TestCase):
         # FOREACH
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$[0][0].statistics.run.duration", value="0.123"),
-                goldie.JsonReplacement(path="$[1][0].statistics.result.duration", value="0.123"),
-                goldie.JsonReplacement(path="$[2][0].statistics.run.duration", value="0.123"),
+                goldie.JsonReplacement(path="$[0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2].statistics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -103,6 +103,23 @@ class TestExample(unittest.TestCase):
             td=goldie.TestDefinition(
                 input_file=os.path.join(path, "foreach.json"),
                 extra_args=[("pipeline", os.path.join(path, "foreach.py"))],
+            ),
+            configuration=config,
+        )
+
+        # FOREACH 2 PREDECESSORS
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$[0][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2][0].statistics.run.duration", value=0.123),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach-2-pred.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach-2-pred.py"))],
             ),
             configuration=config,
         )
