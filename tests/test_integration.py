@@ -91,6 +91,16 @@ class TestExample(unittest.TestCase):
             configuration=config,
         )
 
+        # FOREACH
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach.py"))],
+            ),
+            configuration=config,
+        )
+
         # COMPLEX
         config_complex = replace(config)
         config_complex.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
@@ -106,16 +116,6 @@ class TestExample(unittest.TestCase):
                 extra_args=[("pipeline", os.path.join(path, "complex.py"))],
             ),
             configuration=config_complex,
-        )
-
-        # FOREACH
-        goldie.run_file_unittest(
-            test=self,
-            td=goldie.TestDefinition(
-                input_file=os.path.join(path, "foreach.json"),
-                extra_args=[("pipeline", os.path.join(path, "foreach.py"))],
-            ),
-            configuration=config,
         )
 
 
