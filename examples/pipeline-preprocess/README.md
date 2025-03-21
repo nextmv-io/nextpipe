@@ -5,7 +5,7 @@ An example of a pipeline fetching CSV data, converting it to JSON, ensembling ac
 ## Graph
 
 ```mermaid
-graph TD
+graph LR
   fetch(fetch)
   fetch --> convert
   convert(convert)

@@ -5,7 +5,7 @@ A simple chain pipeline.
 ## Graph
 
 ```mermaid
-graph TD
+graph LR
   prepare(prepare)
   prepare --> solve
   solve(solve)

@@ -5,7 +5,7 @@ A more complex pipeline combining some concepts.
 ## Graph
 
 ```mermaid
-graph TD
+graph LR
   fetch_data(fetch_data)
   fetch_data --> run_nextroute
   fetch_data --> run_ortools

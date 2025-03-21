@@ -5,7 +5,7 @@ A basic ensemble pipeline.
 ## Graph
 
 ```mermaid
-graph TD
+graph LR
   run_nextroute{ }
   run_nextroute_join{ }
   run_nextroute_0(run_nextroute_0)

@@ -166,7 +166,7 @@ class FlowGraph:
     def _to_mermaid(self):
         """Convert the graph to a Mermaid diagram."""
         out = io.StringIO()
-        out.write("graph TD\n")
+        out.write("graph LR\n")
         for step in self.steps:
             id = step.definition.get_id()
             if step.definition.is_foreach():

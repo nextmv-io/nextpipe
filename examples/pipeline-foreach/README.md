@@ -5,7 +5,7 @@ Example of a pipeline with a fanout step (`@foreach`) that runs the same input t
 ## Graph
 
 ```mermaid
-graph TD
+graph LR
   prepare{ }
   prepare(prepare)
   prepare -- foreach --> solve
