@@ -11,7 +11,7 @@ from nextpipe import AppOption, AppRunConfig, FlowSpec, app, foreach, join, need
 class Flow(FlowSpec):
     @foreach()  # Run the successor step for each item in the result list of this step
     @step
-    def fanout(data: dict):
+    def prepare(data: dict):
         """
         Creates 3 copies of the input and configures them for 3 different app parameters.
         """
@@ -19,15 +19,8 @@ class Flow(FlowSpec):
         run_configs = [AppRunConfig(input, [AppOption("param", i)]) for i, input in enumerate(inputs)]
         return run_configs
 
-    @step
-    def stats(data: dict):
-        """
-        Calculates some statistics to put on the output as well.
-        """
-        return {"stats": {"count": len(data)}}
-
     @app(app_id="echo")
-    @needs(predecessors=[fanout])
+    @needs(predecessors=[prepare])
     @step
     def solve():
         """

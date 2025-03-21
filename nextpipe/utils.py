@@ -36,8 +36,8 @@ _INFINITE_TIMEOUT = sys.maxsize
 def wait_for_runs(
     app: Application,
     run_ids: list[str],
-    timeout: int = _INFINITE_TIMEOUT,
-    max_backoff: int = 30,
+    timeout: float = _INFINITE_TIMEOUT,
+    max_backoff: float = 30,
 ) -> list[RunResult]:
     """
     Wait until all runs with the given IDs are finished.

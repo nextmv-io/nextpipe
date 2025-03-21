@@ -5,6 +5,22 @@ from dataclasses_json import dataclass_json
 
 @dataclass_json
 @dataclass
+class AppPollingOptions:
+    """Options for polling the platform for the status of an app."""
+
+    timeout: float = 1800
+    """
+    Timeout in seconds for polling the platform.
+    This is used for example when waiting for results of an app run.
+    """
+    max_backoff: float = 30
+    """
+    Maximum backoff time in seconds.
+    """
+
+
+@dataclass_json
+@dataclass
 class Configuration:
     """Configuration for the pipeline."""
 
@@ -19,4 +35,8 @@ class Configuration:
     This is used to avoid accidental combinatorial explosions due to the Cartesian product
     of inputs used when a step has multiple predecessors which are themselves repeated or
     foreach steps.
+    """
+    app_polling: AppPollingOptions = AppPollingOptions()
+    """
+    Options for polling the platform for the status of an app.
     """

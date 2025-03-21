@@ -108,6 +108,16 @@ class TestExample(unittest.TestCase):
             configuration=config_complex,
         )
 
+        # FOREACH
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach.py"))],
+            ),
+            configuration=config,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
