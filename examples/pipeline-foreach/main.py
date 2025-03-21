@@ -1,6 +1,5 @@
 import copy
 import json
-import os
 
 import nextmv
 import nextmv.cloud
@@ -35,19 +34,15 @@ class Flow(FlowSpec):
         """
         pass
 
-    @needs(predecessors=[solve])
+    @needs(predecessors=[solve, stats])
     @join()  # Collect the results from the previous 'foreach' step and combine them into a list passed as the arg
     @step
-    def merge(results: list[dict]):
+    def merge(results: list):
         """Merges the results."""
         return results
 
 
 def main():
-    # Read API key from file (until secrets management support)
-    with open("key.json") as f:
-        os.environ["NEXTMV_API_KEY"] = json.load(f)["nextmv_api_key"]
-
     # Load input data
     input = nextmv.load_local()
 

@@ -1,5 +1,4 @@
 import json
-import os
 
 import nextmv
 
@@ -59,10 +58,6 @@ class Flow(FlowSpec):
 
 
 def main():
-    # Read API key from file (until secrets management support)
-    with open("key.json") as f:
-        os.environ["NEXTMV_API_KEY"] = json.load(f)["nextmv_api_key"]
-
     # Load input data
     input = nextmv.load_local()
 

@@ -288,8 +288,8 @@ class Runner:
         inputs = [list(item) for item in product(*predecessor_inputs.values())]
         # If the steps is a 'join' step, we need to combine the inputs from all predecessors.
         if step.definition.is_join():
-            # Unwrap the inputs from the list of lists.
-            inputs = [item[0] for item in inputs]
+            # Make sure that we only pass one list as the input.
+            inputs = [[inputs]]
         # If the step is a 'repeat' step, repeat the inputs for each repetition.
         if step.definition.is_repeat():
             inputs = inputs * step.definition.get_repetitions()

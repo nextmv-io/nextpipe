@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from dataclasses_json import dataclass_json
 
@@ -36,7 +36,7 @@ class Configuration:
     of inputs used when a step has multiple predecessors which are themselves repeated or
     foreach steps.
     """
-    app_polling: AppPollingOptions = AppPollingOptions()
+    app_polling: AppPollingOptions = field(default_factory=AppPollingOptions)
     """
     Options for polling the platform for the status of an app.
     """
