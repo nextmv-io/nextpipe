@@ -200,9 +200,8 @@ class FlowGraph:
             ]
         )
 
-    def _to_uplink_node(self, node: FlowNode) -> uplink.NodeDTO:
-        return uplink.NodeDTO(
-            id=node.id,
+    def _to_uplink_node(self, node: FlowNode) -> uplink.NodeStateDTO:
+        return uplink.NodeStateDTO(
             parent_id=node.parent.definition.get_id(),
             predecessor_ids=[p.id for p in node.successors],
             status=node.status,
@@ -319,6 +318,8 @@ class Runner:
         with reference.parent.lock:
             if all(n.done for n in reference.parent.nodes):
                 reference.parent.done = True
+        # Inform the platform about the node update
+        self.uplink.enqueue_node_update(reference.id, self.graph._to_uplink_node(reference))
 
     @staticmethod
     def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
@@ -423,7 +424,7 @@ class Runner:
                     step.nodes.append(node)
                     closed_steps.add(step)
                     open_steps.update(step.successors)
-                    self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
+                    self.uplink.enqueue_node_update(node.id, self.graph._to_uplink_node(node))
                     continue
                 # Run the node asynchronously
                 step.definition.set_state("running")
@@ -435,7 +436,7 @@ class Runner:
                     job = self.__create_job(node, input)
                     self.pool.run(job)
                     step.nodes.append(node)
-                    self.uplink.enqueue_node_update(self.graph._to_uplink_node(node))
+                    self.uplink.enqueue_node_update(node.id, self.graph._to_uplink_node(node))
 
             # Wait until at least one task is done
             task_done = False

@@ -5,7 +5,7 @@ import unittest
 import nextmv.cloud
 
 from nextpipe import FlowSpec, app, needs, step
-from nextpipe.uplink import FlowDTO, NodeDTO, StepDTO, UplinkClient
+from nextpipe.uplink import FlowDTO, NodeStateDTO, StepDTO, UplinkClient
 
 
 class Flow(FlowSpec):
@@ -28,7 +28,7 @@ class Flow(FlowSpec):
         return result
 
 
-def _create_example_flow() -> tuple[FlowDTO, list[NodeDTO]]:
+def _create_example_flow() -> tuple[FlowDTO, dict[str, NodeStateDTO]]:
     steps = [
         StepDTO(
             id="prepare",
@@ -52,42 +52,38 @@ def _create_example_flow() -> tuple[FlowDTO, list[NodeDTO]]:
     flow = FlowDTO(
         steps=steps,
     )
-    nodes = [
-        NodeDTO(
-            id="prepare_0",
+    node_updates = {
+        "prepare_0": NodeStateDTO(
             parent_id="prepare",
             predecessor_ids=[],
             status="succeeded",
             run_id=None,
         ),
-        NodeDTO(
-            id="solve_0",
+        "solve_0": NodeStateDTO(
             parent_id="solve",
             predecessor_ids=["prepare_0"],
             status="succeeded",
             run_id="run-123",
         ),
-        NodeDTO(
-            id="solve_1",
+        "solve_1": NodeStateDTO(
             parent_id="solve",
             predecessor_ids=["prepare_0"],
             status="succeeded",
             run_id="run-124",
         ),
-        NodeDTO(
-            id="enhance_0",
+        "enhance_0": NodeStateDTO(
             parent_id="enhance",
             predecessor_ids=["solve_0", "solve_1"],
             status="succeeded",
             run_id=None,
         ),
-    ]
-    return flow, nodes
+    }
+    return flow, node_updates
 
 
 class TestLogger(unittest.TestCase):
     def test_no_uplink(self):
-        flow, nodes = _create_example_flow()
+        flow, node_updates = _create_example_flow()
         client = nextmv.cloud.Client(
             api_key="unavailable",
             max_retries=0,
@@ -97,7 +93,7 @@ class TestLogger(unittest.TestCase):
         uplink = UplinkClient(client=client, config=None)
         uplink.run_async()
         uplink.post_graph(flow)
-        uplink.enqueue_node_update(nodes[0])
+        uplink.enqueue_node_update(*(list(node_updates.items())[0]))
         time.sleep(0.5)
         uplink.terminate()
         time.sleep(0.5)

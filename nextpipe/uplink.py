@@ -1,3 +1,5 @@
+import copy
+import datetime
 import os
 import threading
 import time
@@ -9,7 +11,6 @@ from nextmv.cloud import Client
 from nextpipe.utils import log
 
 FAILED_UPDATES_THRESHOLD = 10
-NODE_UPDATE_BATCH_SIZE = 20
 
 ENV_APPLICATION_ID = "NEXTMV_APPLICATION_ID"
 ENV_RUN_ID = "NEXTMV_RUN_ID"
@@ -49,11 +50,7 @@ class FlowDTO:
 
 @dataclass_json
 @dataclass
-class NodeDTO:
-    id: str
-    """
-    Node ID based on the step ID and a number.
-    """
+class NodeStateDTO:
     parent_id: str
     """
     Parent step.
@@ -69,6 +66,19 @@ class NodeDTO:
     run_id: str = None
     """
     ID of the associated run, if any.
+    """
+
+
+@dataclass
+@dataclass_json
+class NodeUpdateDTO:
+    updated_at: str
+    """
+    Time of the update as an RFC3339 string.
+    """
+    nodes: dict[str, NodeStateDTO]
+    """
+    Nodes and their current state.
     """
 
 
@@ -97,6 +107,8 @@ class UplinkClient:
             log("No application ID or run ID found, uplink is inactive.")
         self.client = client
         self._lock = threading.Lock()
+        self.node_state = {}
+        self.changed = False
         self._terminate = False
         self._terminated = False
         self._pending_node_updates = []
@@ -116,59 +128,38 @@ class UplinkClient:
         if not resp.ok:
             raise Exception(f"Failed to post graph: {resp.text}")
 
-    def _post_node_update(self, nodes: list[NodeDTO]):
-        """
-        Posts node updates to the server.
-        """
-        node_list = [node.to_dict() for node in nodes]
-        resp = self.client.request(
-            "PATCH",
-            f"/v1/applications/{self.config.application_id}/runs/{self.config.run_id}/graph",
-            payload=node_list,
-        )
-        if not resp.ok:
-            raise Exception(f"Failed to post node update: {resp.text}")
-
-    def _clear_duplicated_updates(self):
-        """
-        Clears duplicated updates from the pending queue.
-        """
-        with self._lock:
-            seen = set()
-            for i in range(len(self._pending_node_updates) - 1, -1, -1):
-                if self._pending_node_updates[i].name in seen:
-                    del self._pending_node_updates[i]
-                else:
-                    seen.add(self._pending_node_updates[i].name)
-
-    def _reenqueue_failed_updates(self, nodes: list[NodeDTO]):
-        """
-        Re-enqueues failed updates to the pending queue.
-        """
-        with self._lock:
-            self._pending_node_updates = nodes + self._pending_node_updates
-            self._clear_duplicated_updates()
-
-    def _pop_node_updates(self, count: int) -> list[NodeDTO]:
-        """
-        Pops the first `count` node updates from the pending queue.
-        """
-        with self._lock:
-            nodes = self._pending_node_updates[:count]
-            self._pending_node_updates = self._pending_node_updates[count:]
-        return nodes
-
-    def enqueue_node_update(self, node: NodeDTO):
+    def enqueue_node_update(self, node_id: str, node_state: NodeStateDTO):
         """
         Enqueues a node update to be posted to the uplink server.
         """
         if self.inactive:
             return
-        if not isinstance(node, NodeDTO):
-            raise ValueError(f"Expected NodeDTO, got {type(node)}")
+        if not isinstance(node_state, NodeStateDTO):
+            raise ValueError(f"Expected NodeStateDTO, got {type(node_state)}")
         with self._lock:
-            self._pending_node_updates.append(node)
-            self._clear_duplicated_updates()
+            self.node_state[node_id] = node_state
+            self.changed = True
+
+    def _post_node_update(self):
+        """
+        Posts node updates to the server.
+        """
+        with self._lock:
+            # Get RFC3339 timestamp in UTC
+            timestamp = datetime.datetime.now(datetime.UTC).isoformat()
+            # Create node update
+            node_update = NodeUpdateDTO(
+                updated_at=timestamp,
+                nodes=copy.deepcopy(self.node_state),
+            )
+        # Post update
+        resp = self.client.request(
+            "PATCH",
+            f"/v1/applications/{self.config.application_id}/runs/{self.config.run_id}/graph",
+            payload=node_update.to_dict(),
+        )
+        if not resp.ok:
+            raise Exception(f"Failed to post node update: {resp.text}")
 
     def run_async(self):
         """
@@ -182,19 +173,16 @@ class UplinkClient:
             while not self._terminate:
                 # Sleep
                 time.sleep(1)
-                # Get pending node updates
-                node_updates = None
-                with self._lock:
-                    node_updates = self._pop_node_updates(NODE_UPDATE_BATCH_SIZE)
                 # Post update, if any
-                if node_updates:
+                if self.changed:
                     try:
-                        self._post_node_update(node_updates)
+                        self._post_node_update()
+                        with self._lock:
+                            self.changed = False
                     except Exception:
                         with self._lock:
                             # Update failed, keep in pending
-                            self._updates_failed += len(node_updates)
-                            self._pending_node_updates = node_updates + self._pending_node_updates
+                            self._updates_failed += 1
                             if self._updates_failed > FAILED_UPDATES_THRESHOLD:
                                 # Too many failed updates, terminate
                                 self._terminate = True
