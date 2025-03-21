@@ -16,7 +16,7 @@ graph LR
 
 ## Pre-requisites
 
-- Push the echo app as described in the [echo app README](../apps/echo/README.md)`
+- Push the echo app as described in the [echo app README](../apps/echo/README.md)
 
 ## Usage
 
