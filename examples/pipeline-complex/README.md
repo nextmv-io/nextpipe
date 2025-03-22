@@ -40,5 +40,5 @@ graph LR
 
 ```bash
 nextmv app push -a <app-id>
-echo '{}' | nextmv app run -a <app-id>
+curl "https://gist.githubusercontent.com/merschformann/a90959b87d1360b604e4a9f6457340ca/raw/661e631376bdf78a07548a3cd136c1fc6e47c639/muenster.json" | nextmv app run -a <app-id>
 ```

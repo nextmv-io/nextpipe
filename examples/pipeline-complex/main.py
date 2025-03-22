@@ -1,7 +1,7 @@
+import copy
 import json
 
 import nextmv
-import requests
 
 from nextpipe import FlowSpec, app, needs, repeat, step
 
@@ -9,29 +9,39 @@ from nextpipe import FlowSpec, app, needs, repeat, step
 # >>> Workflow definition
 class Flow(FlowSpec):
     @step
-    def fetch_data(_):
-        """Fetches data from the database."""
-        file_url = "https://gist.githubusercontent.com/merschformann/a90959b87d1360b604e4a9f6457340ca/raw/661e631376bdf78a07548a3cd136c1fc6e47c639/muenster.json"
-        response = requests.get(file_url)
-        return response.json()
+    def prepare(input: dict):
+        """Prepares the data."""
+        return input
 
-    @repeat(repetitions=3)
+    @needs(predecessors=[prepare])
+    @step
+    def convert(input: dict):
+        """Converts the data."""
+        clone = copy.deepcopy(input)
+        if "defaults" in clone and "stops" in clone["defaults"] and "quantity" in clone["defaults"]["stops"]:
+            clone["defaults"]["stops"]["quantity"] *= -1
+        for stop in clone["stops"]:
+            if "quantity" in stop:
+                stop["quantity"] *= -1
+        return clone
+
+    @repeat(repetitions=2)
     @app(app_id="routing-nextroute")
-    @needs(predecessors=[fetch_data])
+    @needs(predecessors=[prepare])
     @step
     def run_nextroute():
         """Runs the model."""
         pass
 
     @app(app_id="routing-ortools")
-    @needs(predecessors=[fetch_data])
+    @needs(predecessors=[convert])
     @step
     def run_ortools():
         """Runs the model."""
         pass
 
     @app(app_id="routing-pyvroom")
-    @needs(predecessors=[fetch_data])
+    @needs(predecessors=[convert])
     @step
     def run_pyvroom():
         """Runs the model."""
@@ -55,12 +65,17 @@ class Flow(FlowSpec):
         values.sort()
         nextmv.log(f"Values: {values}")
 
-        return results[best_solution_idx]
+        # For test stability reasons, we always return the or-tools result
+        _ = results.pop(best_solution_idx)
+        return result_ortools
 
 
 def main():
+    # Load input data
+    input = nextmv.load_local()
+
     # Run workflow
-    flow = Flow("DecisionFlow", None)
+    flow = Flow("DecisionFlow", input.data)
     flow.run()
     result = flow.get_result(flow.pick_best)
     print(json.dumps(result))
