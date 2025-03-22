@@ -2,7 +2,6 @@ import os
 import os.path
 import random
 import unittest
-from dataclasses import replace
 
 import goldie
 from nextmv import cloud
@@ -91,9 +90,42 @@ class TestExample(unittest.TestCase):
             configuration=config,
         )
 
+        # FOREACH
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$[0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2].statistics.run.duration", value=0.123),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach.py"))],
+            ),
+            configuration=config,
+        )
+
+        # FOREACH 2 PREDECESSORS
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$[0][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2][0].statistics.run.duration", value=0.123),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach-2-pred.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach-2-pred.py"))],
+            ),
+            configuration=config,
+        )
+
         # COMPLEX
-        config_complex = replace(config)
-        config_complex.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
                 goldie.JsonReplacement(path="$.statistics.result.duration", value="0.123"),
                 goldie.JsonReplacement(path="$.statistics.run.duration", value="0.123"),
@@ -105,7 +137,7 @@ class TestExample(unittest.TestCase):
                 input_file=os.path.join(path, "complex.json"),
                 extra_args=[("pipeline", os.path.join(path, "complex.py"))],
             ),
-            configuration=config_complex,
+            configuration=config,
         )
 
 

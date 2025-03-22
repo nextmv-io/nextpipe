@@ -1,6 +1,5 @@
 import csv
 import json
-import os
 
 import requests
 from nextmv.logger import log
@@ -90,10 +89,6 @@ class Flow(FlowSpec):
 
 
 def main():
-    # Read API key from file (until secrets management support)
-    with open("key.json") as f:
-        os.environ["NEXTMV_API_KEY"] = json.load(f)["nextmv_api_key"]
-
     # Run workflow
     flow = Flow("DecisionFlow", None)
     flow.run()

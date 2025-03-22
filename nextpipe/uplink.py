@@ -12,7 +12,7 @@ from nextpipe.utils import log
 
 FAILED_UPDATES_THRESHOLD = 10
 
-ENV_APPLICATION_ID = "NEXTMV_APPLICATION_ID"
+ENV_APP_ID = "NEXTMV_APP_ID"
 ENV_RUN_ID = "NEXTMV_RUN_ID"
 
 
@@ -96,7 +96,7 @@ class UplinkClient:
         if config is None:
             # Load config from environment
             config = UplinkConfig(
-                application_id=os.environ.get(ENV_APPLICATION_ID),
+                application_id=os.environ.get(ENV_APP_ID),
                 run_id=os.environ.get(ENV_RUN_ID),
             )
         self.config = config
