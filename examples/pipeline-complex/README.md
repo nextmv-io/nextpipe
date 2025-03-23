@@ -6,10 +6,12 @@ A more complex pipeline combining some concepts.
 
 ```mermaid
 graph LR
-  fetch_data(fetch_data)
-  fetch_data --> run_nextroute
-  fetch_data --> run_ortools
-  fetch_data --> run_pyvroom
+  prepare(prepare)
+  prepare --> convert
+  prepare --> run_nextroute
+  convert(convert)
+  convert --> run_ortools
+  convert --> run_pyvroom
   run_nextroute{ }
   run_nextroute_join{ }
   run_nextroute_0(run_nextroute_0)
@@ -18,9 +20,6 @@ graph LR
   run_nextroute_1(run_nextroute_1)
   run_nextroute --> run_nextroute_1
   run_nextroute_1 --> run_nextroute_join
-  run_nextroute_2(run_nextroute_2)
-  run_nextroute --> run_nextroute_2
-  run_nextroute_2 --> run_nextroute_join
   run_nextroute_join --> pick_best
   run_ortools(run_ortools)
   run_ortools --> pick_best

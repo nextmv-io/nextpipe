@@ -185,14 +185,16 @@ class App:
         instance_id: str = "devint",
         input_type: InputType = InputType.JSON,
         parameters: dict[str, any] = None,
+        full_result: bool = False,
     ):
         self.app_id = app_id
         self.instance_id = instance_id
         self.parameters = parameters if parameters else {}
         self.input_type = input_type
+        self.full_result = full_result
 
     def __repr__(self):
-        return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type})"
+        return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type}, {self.full_result})"
 
 
 def app(
@@ -200,6 +202,7 @@ def app(
     instance_id: str = "devint",
     parameters: dict[str, any] = None,
     input_type: InputType = InputType.JSON,
+    full_result: bool = False,
 ):
     def decorator(function):
         @wraps(function)
@@ -216,6 +219,7 @@ def app(
             instance_id=instance_id,
             parameters=converted_parameters,
             input_type=input_type,
+            full_result=full_result,
         )
         wrapper.step.type = StepType.APP
 

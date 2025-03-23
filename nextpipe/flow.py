@@ -327,7 +327,7 @@ class Runner:
 
         # Run the step
         if node.parent.definition.is_app():
-            app_step = node.parent.definition.app
+            app_step: decorators.App = node.parent.definition.app
             # Prepare the input for the app
             # TODO: We only support one predecessor for app steps for now. This may
             # change in the future. We may want to support multiple predecessors for
@@ -364,7 +364,9 @@ class Runner:
             # Check if all runs were successful
             if output.metadata.status_v2 != StatusV2.succeeded:
                 raise Exception(f"Node {node.id} failed with status {output.metadata.status_v2}: {output.error_log}")
-            # Unwrap the result and return it
+            # Return result (do not unwrap if full result is requested)
+            if app_step.full_result:
+                return output
             return output.output
         else:
             spec = inspect.getfullargspec(node.parent.definition.function)

@@ -6,12 +6,14 @@ Example of a pipeline with a fanout step (`@foreach`) that runs the same input t
 
 ```mermaid
 graph LR
-  prepare{ }
-  prepare(prepare)
-  prepare -- foreach --> solve
+  fanout{ }
+  fanout(fanout)
+  fanout -- foreach --> solve
+  stats(stats)
+  stats -- join --> merge
   solve(solve)
-  solve -- join --> enhance
-  enhance(enhance)
+  solve -- join --> merge
+  merge(merge)
 ```
 
 ## Pre-requisites

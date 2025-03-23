@@ -1,6 +1,7 @@
 import csv
 import json
 
+import nextmv.cloud
 import requests
 from nextmv.logger import log
 
@@ -47,10 +48,20 @@ class Flow(FlowSpec):
             }
         )
 
+    @needs(predecessors=[convert])
+    @step
+    def align(input: dict):
+        clone = json.loads(input)
+        for stop in [s for s in clone["stops"] if "quantity" in s]:
+            stop["quantity"] *= -1
+        return json.dumps(clone)
+
     # >>> Solve the problem using different solvers
     @app(
         app_id="routing-nextroute",
+        instance_id="latest",
         parameters={"solve.duration": "30s"},
+        full_result=True,
     )
     @repeat(repetitions=3)
     @needs(predecessors=[convert])
@@ -58,14 +69,14 @@ class Flow(FlowSpec):
     def solve_nextroute():
         pass
 
-    @app(app_id="routing-pyvroom")
-    @needs(predecessors=[convert])
+    @app(app_id="routing-pyvroom", instance_id="latest", full_result=True)
+    @needs(predecessors=[align])
     @step
     def solve_vroom():
         pass
 
-    @app(app_id="routing-ortools")
-    @needs(predecessors=[convert])
+    @app(app_id="routing-ortools", instance_id="latest", full_result=True)
+    @needs(predecessors=[align])
     @step
     def solve_ortools():
         pass
@@ -74,18 +85,18 @@ class Flow(FlowSpec):
     @needs(predecessors=[solve_nextroute, solve_vroom, solve_ortools])
     @step
     def pick_best(
-        nextroute_results: list[dict],
-        vroom_result: dict,
-        ortools_result: dict,
+        nextroute_results: list[nextmv.cloud.RunResult],
+        vroom_result: nextmv.cloud.RunResult,
+        ortools_result: nextmv.cloud.RunResult,
     ):
         results = nextroute_results + [vroom_result, ortools_result]
         best_solution_idx = min(
             range(len(results)),
-            key=lambda i: results[i]["statistics"]["result"]["value"],
+            key=lambda i: results[i].output["statistics"]["result"]["value"],
         )
         for result in results:
-            log(f"{result['statistics']['run']['custom']['solver']}: " + f"{result['statistics']['result']['value']}")
-        return results[best_solution_idx]
+            log(f"{result.metadata.application_id}: " + f"{result.output['statistics']['result']['value']}")
+        return results[best_solution_idx].output
 
 
 def main():
