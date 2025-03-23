@@ -23,7 +23,7 @@ class Flow(FlowSpec):
         """
         Calculates some statistics to put on the output as well.
         """
-        return {"stats": {"count": len(data)}}
+        return {"stats": {"count": len(json.dumps(data))}}
 
     @app(app_id="echo")
     @needs(predecessors=[fanout])
