@@ -14,7 +14,7 @@ def __get_step_name() -> str:
     """
     if threading.current_thread().name.startswith(THREAD_NAME_PREFIX):
         return threading.current_thread().name[len(THREAD_NAME_PREFIX) :]
-    return "nextpipe"
+    return "main"
 
 
 def log(message: str) -> None:
