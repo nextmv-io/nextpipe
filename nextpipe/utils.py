@@ -1,14 +1,38 @@
 import sys
+import threading
 import time
 from functools import wraps
 
 from nextmv.cloud import Application, RunResult, StatusV2
 
+THREAD_NAME_PREFIX = "nextpipe-"
+
+
+def __get_step_name() -> str:
+    """
+    Gets the name of the step currently executing in the calling thread.
+    """
+    if threading.current_thread().name.startswith(THREAD_NAME_PREFIX):
+        return threading.current_thread().name[len(THREAD_NAME_PREFIX) :]
+    return "nextpipe"
+
 
 def log(message: str) -> None:
-    """Logs a message using stderr."""
+    """
+    Logs a message using stderr. Furthermore, prepends the name of the calling function if it is a step.
+    """
+    step_name = __get_step_name()
+    if step_name:
+        print(f"[{step_name}] {message}", file=sys.stderr)
+    else:
+        print(message, file=sys.stderr)
 
-    print(message, file=sys.stderr)
+
+def log_internal(message: str) -> None:
+    """
+    Logs a message using stderr.
+    """
+    print(f"[nextpipe] {message}", file=sys.stderr)
 
 
 def wrap_func(function):

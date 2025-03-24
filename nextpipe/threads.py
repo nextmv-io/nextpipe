@@ -3,6 +3,8 @@ import threading
 import traceback
 from typing import Callable, Optional
 
+thread_local = threading.local()
+
 
 class Job:
     def __init__(
@@ -10,11 +12,13 @@ class Job:
         target: Callable,
         callback: Callable,
         args: Optional[list] = None,
+        name: str = None,
         reference: any = None,
     ):
         self.target = target
         self.callback = callback
         self.args = args
+        self.name = name
         self.reference = reference
         self.done = False
         self.result = None
@@ -64,7 +68,10 @@ class Pool:
             with self.lock:
                 if len(self.running) < self.max_threads:
                     # Move job from waiting to running
-                    thread = threading.Thread(target=worker, args=(job, thread_id))
+                    kw_args = {"target": worker, "args": (job, thread_id)}
+                    if job.name:
+                        kw_args["name"] = job.name
+                    thread = threading.Thread(**kw_args)
                     self.running[thread_id] = thread
                     self.waiting.pop(thread_id, None)
                     thread.start()

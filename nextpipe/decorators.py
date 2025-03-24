@@ -79,9 +79,9 @@ class Step:
 def step(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
-        utils.log(f"Entering {function.__name__}")
+        utils.log_internal(f"Entering {function.__name__}")
         ret_val = function(*args, **kwargs)
-        utils.log(f"Finished {function.__name__}")
+        utils.log_internal(f"Finished {function.__name__}")
         return ret_val
 
     wrapper.step = Step(function)
@@ -207,7 +207,7 @@ def app(
     def decorator(function):
         @wraps(function)
         def wrapper(*args, **kwargs):
-            utils.log(f"Running {app_id} version {instance_id}")
+            utils.log_internal(f"Running {app_id} version {instance_id}")
             return function(*args, **kwargs)
 
         # We need to make sure that all values of the parameters are converted to strings,
