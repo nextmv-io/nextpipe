@@ -2,7 +2,7 @@ import json
 
 import nextmv
 
-from nextpipe import FlowSpec, app, needs, step
+from nextpipe import FlowSpec, needs, step
 
 
 # >>> Workflow definition
@@ -13,20 +13,11 @@ class Flow(FlowSpec):
         input["prepared"] = True
         return input
 
-    @app(app_id="echo")
     @needs(predecessors=[prepare])
     @step
-    def solve():
-        """Runs the model."""
-        pass
-
-    @needs(predecessors=[solve])
-    @step
-    def enhance(result: dict):
-        """Enhances the result."""
-        output = result["solution"]  # Unwrap the solution
-        output["echo"]["enhanced"] = True
-        return output
+    def fail(result: dict):
+        """A step that fails."""
+        raise ValueError("Something went wrong")
 
 
 def main():
@@ -38,7 +29,7 @@ def main():
     flow.run()
 
     # Write out the result
-    print(json.dumps(flow.get_result(flow.enhance)))
+    print(json.dumps(flow.get_result(flow.fail)))
 
 
 if __name__ == "__main__":

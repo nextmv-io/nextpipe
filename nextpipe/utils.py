@@ -36,17 +36,20 @@ _INFINITE_TIMEOUT = sys.maxsize
 def wait_for_runs(
     app: Application,
     run_ids: list[str],
-    timeout: int = _INFINITE_TIMEOUT,
-    max_backoff: int = 30,
+    timeout: float = _INFINITE_TIMEOUT,
+    max_backoff: float = 30,
 ) -> list[RunResult]:
     """
     Wait until all runs with the given IDs are finished.
     """
     # Wait until all runs are finished or the timeout is reached
     missing = set(run_ids)
-    backoff = 1
+    backoff = 2
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
+        time.sleep(backoff)
+        backoff = min(backoff * 2, max_backoff)
+
         for run_id in missing.copy():
             run_info = app.run_metadata(run_id=run_id)
             if run_info.metadata.status_v2 == StatusV2.succeeded:
@@ -56,10 +59,7 @@ def wait_for_runs(
                 StatusV2.failed,
                 StatusV2.canceled,
             ]:
-                raise RuntimeError(f"Run {run_id} {run_info.metadata.status_v2}")
-
-        time.sleep(backoff)
-        backoff = min(backoff * 2, max_backoff)
+                raise RuntimeError(f"Run {run_id} {run_info.metadata.status_v2}: {run_info.metadata.error}")
 
     if missing:
         raise TimeoutError(f"Timeout of {timeout} seconds reached while waiting.")

@@ -1,0 +1,56 @@
+[
+    {
+        "solution": {
+            "echo": {
+                "data": {
+                    "hello": "world!"
+                },
+                "args": [
+                    "-param=0"
+                ]
+            }
+        },
+        "statistics": {
+            "run": {
+                "duration": 0.123
+            }
+        },
+        "assets": []
+    },
+    {
+        "solution": {
+            "echo": {
+                "data": {
+                    "hello": "world!"
+                },
+                "args": [
+                    "-param=1"
+                ]
+            }
+        },
+        "statistics": {
+            "run": {
+                "duration": 0.123
+            }
+        },
+        "assets": []
+    },
+    {
+        "solution": {
+            "echo": {
+                "data": {
+                    "hello": "world!"
+                },
+                "args": [
+                    "-param=2"
+                ]
+            }
+        },
+        "statistics": {
+            "run": {
+                "duration": 0.123
+            }
+        },
+        "assets": []
+    }
+]

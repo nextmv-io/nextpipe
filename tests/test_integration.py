@@ -18,12 +18,13 @@ def _create_key_file(path: str):
 
 class TestPlatform(unittest.TestCase):
     def test_platform(self):
-        # Skip test until lambda is officially supported
-        return
         try:
             # Generate a random APP_ID
             app = None
             APP_ID = "int-test-" + "".join(random.choices("0123456789", k=8))
+
+            # Log test app id
+            print(f"Test app id: {APP_ID}")
 
             # Create app for testing
             app = cloud.Application.new(CLIENT, APP_ID, APP_ID)
@@ -44,10 +45,12 @@ class TestPlatform(unittest.TestCase):
 
             # Run the app
             r = random.randint(0, 100)
-            result = app.new_run_with_result(input={"random": r})
-            self.assertFalse(hasattr(result, "error_log"))
-            self.assertEqual(result.output["echo"]["enhanced"], True)
-            self.assertEqual(result.output["echo"]["random"], r)
+            polling_opts = cloud.PollingOptions(max_tries=500, max_duration=60)
+            result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
+            self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
+            self.assertEqual(result.output["echo"]["data"]["enhanced"], True)
+            self.assertEqual(result.output["echo"]["data"]["prepared"], True)
+            self.assertEqual(result.output["echo"]["data"]["random"], r)
         finally:
             # Make sure to delete the app
             if app:
@@ -60,15 +63,8 @@ class TestExample(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), "pipelines")
         _create_key_file(path)
 
-        # Define golden file tests
-        config = goldie.ConfigDirectoryTest(
-            # We want to test all JSON files in the data directory.
-            explicit_files=[
-                goldie.TestDefinition(
-                    input_file=os.path.join(path, "chain.json"),
-                    extra_args=[("pipeline", os.path.join(path, "chain.py"))],
-                )
-            ],
+        # Create base configuration
+        config = goldie.ConfigFileTest(
             run_configuration=goldie.ConfigRun(
                 # We simply run the script in this directory.
                 cmd="python",
@@ -83,7 +79,66 @@ class TestExample(unittest.TestCase):
                 comparison_type=goldie.ComparisonType.JSON,
             ),
         )
-        goldie.directory.run_unittest(self, config)
+
+        # CHAIN
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "chain.json"),
+                extra_args=[("pipeline", os.path.join(path, "chain.py"))],
+            ),
+            configuration=config,
+        )
+
+        # FOREACH
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$[0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2].statistics.run.duration", value=0.123),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach.py"))],
+            ),
+            configuration=config,
+        )
+
+        # FOREACH 2 PREDECESSORS
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$[0][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2][0].statistics.run.duration", value=0.123),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "foreach-2-pred.json"),
+                extra_args=[("pipeline", os.path.join(path, "foreach-2-pred.py"))],
+            ),
+            configuration=config,
+        )
+
+        # COMPLEX
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$.statistics.result.duration", value="0.123"),
+                goldie.JsonReplacement(path="$.statistics.run.duration", value="0.123"),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "complex.json"),
+                extra_args=[("pipeline", os.path.join(path, "complex.py"))],
+            ),
+            configuration=config,
+        )
 
 
 if __name__ == "__main__":

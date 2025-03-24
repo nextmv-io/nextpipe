@@ -1,4 +1,3 @@
-import copy
 import json
 
 import nextmv
@@ -13,18 +12,6 @@ class Flow(FlowSpec):
         """Prepares the data."""
         return input
 
-    @needs(predecessors=[prepare])
-    @step
-    def convert(input: dict):
-        """Converts the data."""
-        clone = copy.deepcopy(input)
-        if "defaults" in clone and "stops" in clone["defaults"] and "quantity" in clone["defaults"]["stops"]:
-            clone["defaults"]["stops"]["quantity"] *= -1
-        for stop in clone["stops"]:
-            if "quantity" in stop:
-                stop["quantity"] *= -1
-        return clone
-
     @repeat(repetitions=2)
     @app(app_id="routing-nextroute")
     @needs(predecessors=[prepare])
@@ -34,14 +21,14 @@ class Flow(FlowSpec):
         pass
 
     @app(app_id="routing-ortools")
-    @needs(predecessors=[convert])
+    @needs(predecessors=[prepare])
     @step
     def run_ortools():
         """Runs the model."""
         pass
 
     @app(app_id="routing-pyvroom")
-    @needs(predecessors=[convert])
+    @needs(predecessors=[prepare])
     @step
     def run_pyvroom():
         """Runs the model."""

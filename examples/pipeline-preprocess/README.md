@@ -5,7 +5,7 @@ An example of a pipeline fetching CSV data, converting it to JSON, ensembling ac
 ## Graph
 
 ```mermaid
-graph TD
+graph LR
   fetch(fetch)
   fetch --> convert
   convert(convert)
@@ -42,5 +42,5 @@ graph TD
 
 ```bash
 nextmv app push -a <app-id>
-echo '{}' | nextmv app run -a <app-id> -e "8c16gb12h"
+echo '{}' | nextmv app run -a <app-id>
 ```

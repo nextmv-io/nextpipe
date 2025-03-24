@@ -1,5 +1,4 @@
 import json
-import os
 
 import nextmv
 
@@ -26,15 +25,11 @@ class Flow(FlowSpec):
     def enhance(result: dict):
         """Enhances the result."""
         output = result["solution"]  # Unwrap the solution
-        output["echo"]["enhanced"] = True
+        output["echo"]["data"]["enhanced"] = True
         return output
 
 
 def main():
-    # Read API key from file (until secrets management support)
-    with open("key.json") as f:
-        os.environ["NEXTMV_API_KEY"] = json.load(f)["nextmv_api_key"]
-
     # Load input data
     input = nextmv.load_local()
 

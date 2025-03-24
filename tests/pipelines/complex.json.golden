@@ -1,0 +1,72 @@
+{
+    "options": {
+        "input": "",
+        "output": "",
+        "duration": 30
+    },
+    "solution": {
+        "vehicles": [
+            {
+                "id": "v1",
+                "route_travel_distance": 287,
+                "route": [
+                    {
+                        "stop": {
+                            "location": {
+                                "lon": 135.672009,
+                                "lat": 35.017209
+                            },
+                            "id": "v1_start"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "id": "Arashiyama Bamboo Forest",
+                            "location": {
+                                "lon": 135.672009,
+                                "lat": 35.017209
+                            }
+                        }
+                    },
+                    {
+                        "stop": {
+                            "id": "Kinkaku-ji",
+                            "location": {
+                                "lon": 135.728898,
+                                "lat": 35.039705
+                            }
+                        }
+                    },
+                    {
+                        "stop": {
+                            "location": {
+                                "lon": 135.728898,
+                                "lat": 35.039705
+                            },
+                            "id": "v1_end"
+                        }
+                    }
+                ]
+            }
+        ],
+        "unplanned": []
+    },
+    "statistics": {
+        "run": {
+            "duration": "0.123"
+        },
+        "result": {
+            "value": 287.0,
+            "custom": {
+                "solution_found": true,
+                "activated_vehicles": 1,
+                "max_route_duration": 287,
+                "max_stops_in_vehicle": 2,
+                "min_stops_in_vehicle": 2
+            },
+            "duration": "0.123"
+        },
+        "schema": "v1"
+    },
+    "assets": []
+}

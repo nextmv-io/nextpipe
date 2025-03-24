@@ -26,7 +26,7 @@ class Flow(FlowSpec):
     def enhance(result: dict):
         """Enhances the result."""
         output = result["solution"]  # Unwrap the solution
-        output["echo"]["enhanced"] = True
+        output["echo"]["data"]["enhanced"] = True
         return output
 
 

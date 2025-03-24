@@ -1,49 +1,25 @@
-import base64
-import dataclasses
+from dataclasses import dataclass, field
 
-import dataclasses_json
-
-
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class NodeUpdateDTO:
-    node_id: str
-    """The ID of the node to update."""
-    state: str
-    """The state of the node."""
-    run_ids: list[str] = dataclasses.field(default_factory=list)
-    """The ID of the associated run (if any)."""
+from dataclasses_json import dataclass_json
 
 
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class NodeDTO:
-    id: str
-    """The ID of the node."""
-    app_id: str
-    """The ID of the app this step represents (if any)."""
-    step_name: str
-    """The name of the step (func)."""
-    docs: str
-    """The doc string of the step."""
-    successors: list[str]
-    """The IDs of the nodes that depend on this node."""
+@dataclass_json
+@dataclass
+class AppOption:
+    """Option for running an app."""
+
+    name: str
+    """Key for the option."""
+    value: any
+    """Value for the option."""
 
 
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class DAGDTO:
-    nodes: list[NodeDTO]
-    """The nodes in the DAG."""
+@dataclass_json
+@dataclass
+class AppRunConfig:
+    """Configuration for running an app."""
 
-
-def serialize_dag(dag: DAGDTO) -> str:
-    """Serialize the DAG for transmission."""
-    j_str = dag.to_json(separators=(",", ":"))
-    return base64.b64encode(j_str.encode()).decode()
-
-
-def serialize_node_update(node_update: NodeUpdateDTO) -> str:
-    """Serialize the node update for transmission."""
-    j_str = node_update.to_json(separators=(",", ":"))
-    return base64.b64encode(j_str.encode()).decode()
+    input: dict[str, any] = None
+    """Input for the app."""
+    options: list[AppOption] = field(default_factory=list)
+    """Options for running the app."""

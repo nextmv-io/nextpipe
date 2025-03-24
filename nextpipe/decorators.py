@@ -36,7 +36,7 @@ class Step:
             b += f", {self.app}"
         return b + ")"
 
-    def get_name(self):
+    def get_id(self):
         return self.function.__name__
 
     def set_state(self, state: str):
@@ -54,8 +54,14 @@ class Step:
     def is_repeat(self):
         return hasattr(self, "repeat")
 
+    def get_repetitions(self):
+        return self.repeat.repetitions if self.is_repeat() else 1
+
     def is_app(self):
         return self.type == StepType.APP
+
+    def get_app_id(self):
+        return self.app.app_id if self.is_app() else None
 
     def set_run_ids(self, run_ids: list[str]):
         self.run_ids = run_ids
@@ -63,46 +69,32 @@ class Step:
     def get_run_ids(self):
         return self.run_ids
 
+    def is_foreach(self):
+        return hasattr(self, "foreach")
+
+    def is_join(self):
+        return hasattr(self, "join")
+
+
+def step(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        utils.log(f"Entering {function.__name__}")
+        ret_val = function(*args, **kwargs)
+        utils.log(f"Finished {function.__name__}")
+        return ret_val
+
+    wrapper.step = Step(function)
+    wrapper.is_step = True
+    return wrapper
+
 
 class Needs:
     def __init__(self, predecessors: list[callable]):
         self.predecessors = predecessors
 
     def __repr__(self):
-        return f"StepNeeds({','.join([p.step.get_name() for p in self.predecessors])})"
-
-
-class Optional:
-    def __init__(self, condition: callable):
-        self.condition = condition
-
-    def __repr__(self):
-        return f"StepOnlyIf({self.condition})"
-
-
-class Repeat:
-    def __init__(self, repetitions: int):
-        self.repetitions = repetitions
-
-    def __repr__(self):
-        return f"StepRepeat({self.repetitions})"
-
-
-class App:
-    def __init__(
-        self,
-        app_id: str,
-        instance_id: str = "devint",
-        input_type: InputType = InputType.JSON,
-        parameters: dict[str, any] = None,
-    ):
-        self.app_id = app_id
-        self.instance_id = instance_id
-        self.parameters = parameters if parameters else {}
-        self.input_type = input_type
-
-    def __repr__(self):
-        return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type})"
+        return f"StepNeeds({','.join([p.step.get_id() for p in self.predecessors])})"
 
 
 def needs(predecessors: list[callable]):
@@ -113,12 +105,28 @@ def needs(predecessors: list[callable]):
     return decorator
 
 
+class Optional:
+    def __init__(self, condition: callable):
+        self.condition = condition
+
+    def __repr__(self):
+        return f"StepOnlyIf({self.condition})"
+
+
 def optional(condition: Callable[[Step], bool]):
     def decorator(function):
         function.step.optional = Optional(condition)
         return function
 
     return decorator
+
+
+class Repeat:
+    def __init__(self, repetitions: int):
+        self.repetitions = repetitions
+
+    def __repr__(self):
+        return f"StepRepeat({self.repetitions})"
 
 
 def repeat(repetitions: int):
@@ -138,11 +146,63 @@ def repeat(repetitions: int):
     return decorator
 
 
+class Foreach:
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "StepForeach()"
+
+
+def foreach(f: Callable = None):
+    def decorator(function):
+        function.step.foreach = Foreach()
+        return function
+
+    return decorator
+
+
+class Join:
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "StepJoin()"
+
+
+def join(f: Callable = None):
+    def decorator(function):
+        function.step.join = Join()
+        return function
+
+    return decorator
+
+
+class App:
+    def __init__(
+        self,
+        app_id: str,
+        instance_id: str = "devint",
+        input_type: InputType = InputType.JSON,
+        parameters: dict[str, any] = None,
+        full_result: bool = False,
+    ):
+        self.app_id = app_id
+        self.instance_id = instance_id
+        self.parameters = parameters if parameters else {}
+        self.input_type = input_type
+        self.full_result = full_result
+
+    def __repr__(self):
+        return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type}, {self.full_result})"
+
+
 def app(
     app_id: str,
     instance_id: str = "devint",
     parameters: dict[str, any] = None,
     input_type: InputType = InputType.JSON,
+    full_result: bool = False,
 ):
     def decorator(function):
         @wraps(function)
@@ -159,22 +219,10 @@ def app(
             instance_id=instance_id,
             parameters=converted_parameters,
             input_type=input_type,
+            full_result=full_result,
         )
         wrapper.step.type = StepType.APP
 
         return wrapper
 
     return decorator
-
-
-def step(function):
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-        utils.log(f"Entering {function.__name__}")
-        ret_val = function(*args, **kwargs)
-        utils.log(f"Finished {function.__name__}")
-        return ret_val
-
-    wrapper.step = Step(function)
-    wrapper.is_step = True
-    return wrapper
