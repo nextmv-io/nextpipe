@@ -3,9 +3,8 @@ import json
 
 import nextmv.cloud
 import requests
-from nextmv.logger import log
 
-from nextpipe import FlowSpec, app, needs, repeat, step
+from nextpipe import FlowSpec, app, log, needs, repeat, step
 
 
 # >>> Workflow definition

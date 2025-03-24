@@ -2,7 +2,7 @@ import json
 
 import nextmv
 
-from nextpipe import FlowSpec, app, needs, repeat, step
+from nextpipe import FlowSpec, app, log, needs, repeat, step
 
 
 # >>> Workflow definition
@@ -50,7 +50,7 @@ class Flow(FlowSpec):
 
         values = [result["statistics"]["result"]["value"] for result in results]
         values.sort()
-        nextmv.log(f"Values: {values}")
+        log(f"Values: {values}")
 
         # For test stability reasons, we always return the or-tools result
         _ = results.pop(best_solution_idx)

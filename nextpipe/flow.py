@@ -104,10 +104,10 @@ class FlowGraph:
         self.__debug_print()
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
-        utils.log("Mermaid diagram:")
-        utils.log(mermaid)
+        utils.log_internal("Mermaid diagram:")
+        utils.log_internal(mermaid)
         mermaid_url = f"https://mermaid.ink/svg/{base64.b64encode(mermaid.encode('utf8')).decode('ascii')}?theme=dark"
-        utils.log(f"Mermaid URL: {mermaid_url}")
+        utils.log_internal(f"Mermaid URL: {mermaid_url}")
 
     def get_step(self, definition: decorators.Step) -> FlowStep:
         return self.steps_by_definition[definition]
@@ -209,14 +209,14 @@ class FlowGraph:
         )
 
     def __debug_print(self):
-        utils.log(f"Flow: {self.flow_spec_type.__name__}")
-        utils.log(f"nextpipe: {version('nextpipe')}")
-        utils.log(f"nextmv: {version('nextmv')}")
-        utils.log("Flow graph steps:")
+        utils.log_internal(f"Flow: {self.flow_spec_type.__name__}")
+        utils.log_internal(f"nextpipe: {version('nextpipe')}")
+        utils.log_internal(f"nextmv: {version('nextmv')}")
+        utils.log_internal("Flow graph steps:")
         for step in self.steps:
-            utils.log("Step:")
-            utils.log(f"  Definition: {step.definition}")
-            utils.log(f"  Docstring: {step.docstring}")
+            utils.log_internal("Step:")
+            utils.log_internal(f"  Definition: {step.definition}")
+            utils.log_internal(f"  Docstring: {step.docstring}")
 
 
 class StepVisitor(ast.NodeVisitor):
@@ -323,7 +323,7 @@ class Runner:
 
     @staticmethod
     def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
-        utils.log(f"Running node {node.id}")
+        utils.log_internal(f"Running node {node.id}")
 
         # Run the step
         if node.parent.definition.is_app():
@@ -384,6 +384,7 @@ class Runner:
             target=self.__run_step,
             callback=self.__node_callback,
             args=(node, inputs, self.spec.client),
+            name=utils.THREAD_NAME_PREFIX + node.id,
             reference=node,
         )
 
@@ -394,7 +395,7 @@ class Runner:
             self.uplink.run_async()
         except Exception as e:
             self.uplink.terminate()
-            utils.log(f"Failed to update graph with platform: {e}")
+            utils.log_internal(f"Failed to update graph with platform: {e}")
 
         # Start running the flow
         open_steps: set[FlowStep] = set(self.graph.start_steps)
@@ -406,7 +407,7 @@ class Runner:
             # If there was a failure, stop running the flow
             with self.lock_fail:
                 if self.fail:
-                    utils.log(f"Flow failed: {self.fail_reason}")
+                    utils.log_internal(f"Flow failed: {self.fail_reason}")
                     break
             while True:
                 # Get the first step from the open steps which has all its predecessors done
@@ -417,7 +418,7 @@ class Runner:
                 open_steps.remove(step)
                 # Skip the step if it is optional and the condition is not met
                 if step.definition.skip():
-                    utils.log(f"Skipping step {step.definition.get_id()}")
+                    utils.log_internal(f"Skipping step {step.definition.get_id()}")
                     step.definition.set_state("skipped")
                     # Create dummy node
                     node = FlowNode(step, 0)

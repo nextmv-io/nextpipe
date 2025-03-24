@@ -12,6 +12,7 @@ from .flow import FlowGraph as FlowGraph
 from .flow import FlowSpec as FlowSpec
 from .schema import AppOption as AppOption
 from .schema import AppRunConfig as AppRunConfig
+from .utils import log as log
 
 VERSION = __version__
 """The version of the nextpipe package."""

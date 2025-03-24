@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from nextmv.cloud import Client
 
-from nextpipe.utils import log
+from nextpipe.utils import log_internal
 
 FAILED_UPDATES_THRESHOLD = 10
 
@@ -104,7 +104,7 @@ class UplinkClient:
         if not self.config.application_id or not self.config.run_id:
             self.inactive = True
             self.terminated = True
-            log("No application ID or run ID found, uplink is inactive.")
+            log_internal("No application ID or run ID found, uplink is inactive.")
         self.client = client
         self._lock = threading.Lock()
         self.node_state = {}

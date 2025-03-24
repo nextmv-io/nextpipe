@@ -3,7 +3,7 @@ import json
 
 import nextmv
 
-from nextpipe import FlowSpec, app, needs, repeat, step
+from nextpipe import FlowSpec, app, log, needs, repeat, step
 
 
 # >>> Workflow definition
@@ -26,21 +26,21 @@ class Flow(FlowSpec):
         return clone
 
     @repeat(repetitions=2)
-    @app(app_id="routing-nextroute")
+    @app(app_id="routing-nextroute", instance_id="latest")
     @needs(predecessors=[prepare])
     @step
     def run_nextroute():
         """Runs the model."""
         pass
 
-    @app(app_id="routing-ortools")
+    @app(app_id="routing-ortools", instance_id="latest")
     @needs(predecessors=[convert])
     @step
     def run_ortools():
         """Runs the model."""
         pass
 
-    @app(app_id="routing-pyvroom")
+    @app(app_id="routing-pyvroom", instance_id="latest")
     @needs(predecessors=[convert])
     @step
     def run_pyvroom():
@@ -63,7 +63,7 @@ class Flow(FlowSpec):
 
         values = [result["statistics"]["result"]["value"] for result in results]
         values.sort()
-        nextmv.log(f"Values: {values}")
+        log(f"Values: {values}")
 
         # For test stability reasons, we always return the or-tools result
         _ = results.pop(best_solution_idx)
