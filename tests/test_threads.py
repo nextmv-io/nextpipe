@@ -38,14 +38,13 @@ class TestLogger(unittest.TestCase):
                 intercepted_exception = job.error
 
         pool = Pool(2)
-        for i in range(1, 2):  # Submit 1
+        for i in range(1, 2):
             pool.run(Job(target, callback, (i,)))
         pool.join()
 
         self.assertIsNotNone(intercepted_exception)
-        self.assertIsInstance(intercepted_exception, str)
-        self.assertTrue(intercepted_exception.startswith("Error in thread"))
-        self.assertIn("ValueError: Something went wrong", intercepted_exception)
+        self.assertIsInstance(intercepted_exception, ValueError)
+        self.assertEqual(str(intercepted_exception), "Something went wrong")
 
 
 if __name__ == "__main__":
