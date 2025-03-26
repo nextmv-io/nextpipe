@@ -70,7 +70,7 @@ def wait_for_runs(
     # Wait until all runs are finished or the timeout is reached
     jitter = random.random() * 2.0
     missing = set(run_ids)
-    backoff = 1.0 + jitter  # With base and jitter we aim for a backoff start between 1 and 3 seconds
+    backoff = 2.0 + jitter  # With base and jitter we aim for a backoff start between 2 and 4 seconds
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
         time.sleep(backoff)
