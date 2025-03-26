@@ -1,3 +1,4 @@
+import random
 import sys
 import threading
 import time
@@ -67,8 +68,9 @@ def wait_for_runs(
     Wait until all runs with the given IDs are finished.
     """
     # Wait until all runs are finished or the timeout is reached
+    jitter = random.random() * 2.0
     missing = set(run_ids)
-    backoff = 2
+    backoff = 1.0 + jitter  # With base and jitter we aim for a backoff start between 1 and 3 seconds
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
         time.sleep(backoff)

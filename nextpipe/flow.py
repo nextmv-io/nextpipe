@@ -404,11 +404,6 @@ class Runner:
 
         # Run the steps in parallel
         while open_steps or running_steps:
-            # If there was a failure, stop running the flow
-            with self.lock_fail:
-                if self.fail:
-                    utils.log_internal(f"Flow failed: {self.fail_reason}")
-                    break
             while True:
                 # Get the first step from the open steps which has all its predecessors done
                 step = next(iter(filter(lambda n: all(p in closed_steps for p in n.predecessors), open_steps)), None)
@@ -456,3 +451,7 @@ class Runner:
                         running_steps.remove(step)
                     closed_steps.add(step)
                     open_steps.update(step.successors)
+                # Raise an exception if the flow failed
+                with self.lock_fail:
+                    if self.fail:
+                        raise RuntimeError(f"Flow failed: {self.fail_reason}")

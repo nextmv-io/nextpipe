@@ -1,6 +1,5 @@
 import multiprocessing
 import threading
-import traceback
 from typing import Callable, Optional
 
 thread_local = threading.local()
@@ -40,6 +39,7 @@ class Pool:
         self.counter = 0  # Used to assign unique IDs to threads
         self.waiting = {}
         self.running = {}
+        self.error = None
         self.lock = threading.Lock()
         self.cond = threading.Condition(self.lock)
 
@@ -56,7 +56,8 @@ class Pool:
             try:
                 job.run()
             except Exception as e:
-                job.error = f"Error in thread {thread_id}: {e}\n{traceback.format_exc()}"
+                job.error = e
+                raise RuntimeError(f"Error in thread {thread_id}: {e}") from e
             finally:
                 with self.lock:
                     self.running.pop(thread_id, None)
