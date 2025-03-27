@@ -37,9 +37,14 @@ class Flow(FlowSpec):
     @needs(predecessors=[solve, stats])
     @join()  # Collect the results from the previous 'foreach' step and combine them into a list passed as the arg
     @step
-    def merge(results: list):
+    def merge(results: list[list[dict]]):
         """Merges the results."""
-        return results
+        # Only return the second result from the merged results
+        result, stats = results[1]
+        return {
+            "solve_result": result,
+            "stats": stats,
+        }
 
 
 def main():
