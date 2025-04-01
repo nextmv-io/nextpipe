@@ -1,4 +1,3 @@
-import copy
 import datetime
 import os
 import threading
@@ -37,20 +36,11 @@ class StepDTO:
 
 @dataclass_json
 @dataclass
-class FlowDTO:
+class NodeDTO:
+    id: str
     """
-    Represents a flow in the platform.
+    The ID of the node.
     """
-
-    steps: list[StepDTO]
-    """
-    Steps in the flow.
-    """
-
-
-@dataclass_json
-@dataclass
-class NodeStateDTO:
     parent_id: str
     """
     Parent step.
@@ -69,22 +59,25 @@ class NodeStateDTO:
     """
 
 
-@dataclass
 @dataclass_json
-class NodeUpdateDTO:
+@dataclass
+class FlowDTO:
+    """
+    Represents a flow in the platform.
+    """
+
     updated_at: str
     """
     Time of the update as an RFC3339 string.
     """
-    nodes: dict[str, NodeStateDTO]
+    steps: list[StepDTO]
+    """
+    Steps in the flow.
+    """
+    nodes: list[NodeDTO]
     """
     Nodes and their current state.
     """
-
-
-@dataclass
-class GraphDTO:
-    steps: list[StepDTO]
 
 
 class UplinkClient:
@@ -107,66 +100,45 @@ class UplinkClient:
             log_internal("No application ID or run ID found, uplink is inactive.")
         self.client = client
         self._lock = threading.Lock()
-        self.node_state = {}
+        self.flow = {}
         self.changed = False
         self._terminate = False
         self._terminated = False
-        self._pending_node_updates = []
         self._updates_failed = 0
-
-    def post_graph(self, graph: FlowDTO):
-        """
-        Posts the initial graph to the server.
-        """
-        if self.inactive:
-            return
-        resp = self.client.request(
-            "POST",
-            f"/v1/applications/{self.config.application_id}/runs/{self.config.run_id}/graph",
-            payload=graph.to_dict(),
-        )
-        if not resp.ok:
-            raise Exception(f"Failed to post graph: {resp.text}")
-
-    def enqueue_node_update(self, node_id: str, node_state: NodeStateDTO):
-        """
-        Enqueues a node update to be posted to the uplink server.
-        """
-        if self.inactive:
-            return
-        if not isinstance(node_state, NodeStateDTO):
-            raise ValueError(f"Expected NodeStateDTO, got {type(node_state)}")
-        with self._lock:
-            self.node_state[node_id] = node_state
-            self.changed = True
 
     def _post_node_update(self):
         """
-        Posts node updates to the server.
+        Posts node updates to the platform.
         """
-        with self._lock:
-            # Get RFC3339 timestamp in UTC
-            timestamp = datetime.datetime.now(datetime.UTC).isoformat()
-            # Create node update
-            node_update = NodeUpdateDTO(
-                updated_at=timestamp,
-                nodes=copy.deepcopy(self.node_state),
-            )
-        # Post update
+        # Get RFC3339 timestamp in UTC
+        timestamp = datetime.datetime.now(datetime.UTC).isoformat()
+        self.flow.updated_at = timestamp
         resp = self.client.request(
-            "PATCH",
-            f"/v1/applications/{self.config.application_id}/runs/{self.config.run_id}/graph",
-            payload=node_update.to_dict(),
+            "PUT",
+            f"/v1/applications/{self.config.application_id}/runs/{self.config.run_id}/flow",
+            payload=self.flow.to_dict(),
         )
         if not resp.ok:
-            raise Exception(f"Failed to post node update: {resp.text}")
+            raise Exception(f"Failed to post flow update: {resp.text}")
+
+    def submit_update(self, flow: FlowDTO):
+        """
+        Posts the full flow and its state to the platform.
+        """
+        if self.inactive or self._terminate:
+            return
+        if not isinstance(flow, FlowDTO):
+            raise ValueError(f"Expected FlowDTO, got {type(flow)}")
+        with self._lock:
+            self.flow = flow
+            self.changed = True
 
     def run_async(self):
         """
         Starts the uplink client in a separate thread.
-        The client will post node updates to until terminated.
+        The client will post node updates to the platform until terminated.
         """
-        if self.inactive:
+        if self.inactive or self._terminate:
             return
 
         def run():
@@ -175,12 +147,11 @@ class UplinkClient:
                 time.sleep(1)
                 # Post update, if any
                 if self.changed:
-                    try:
-                        self._post_node_update()
-                        with self._lock:
+                    with self._lock:
+                        try:
+                            self._post_node_update()
                             self.changed = False
-                    except Exception:
-                        with self._lock:
+                        except Exception:
                             # Update failed, keep in pending
                             self._updates_failed += 1
                             if self._updates_failed > FAILED_UPDATES_THRESHOLD:
@@ -201,6 +172,14 @@ class UplinkClient:
         if self.inactive:
             return
 
+        # Terminate the client
         self._terminate = True
         while not self._terminated:
             time.sleep(0.1)
+
+        # Send final update
+        if self.changed:
+            try:
+                self._post_node_update()
+            except Exception:
+                pass

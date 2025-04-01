@@ -65,7 +65,7 @@ class FlowSpec:
         # Create the graph
         self.graph = FlowGraph(self.__class__)
         # Inform platform about the graph
-        self.uplink.post_graph(self.graph._to_uplink_dag())
+        self.uplink.submit_update(self.graph._to_uplink_dto())
         # Prepare for running the flow
         self.input = input
         self.runner = Runner(
@@ -187,7 +187,7 @@ class FlowGraph:
                     out.write(f"  {id} {self.__get_arrow(step, successor)} {successor.definition.get_id()}\n")
         return out.getvalue()
 
-    def _to_uplink_dag(self) -> uplink.FlowDTO:
+    def _to_uplink_dto(self) -> uplink.FlowDTO:
         return uplink.FlowDTO(
             steps=[
                 uplink.StepDTO(
@@ -197,15 +197,18 @@ class FlowGraph:
                     predecessors=[s.definition.get_id() for s in step.successors],
                 )
                 for step in self.steps
-            ]
-        )
-
-    def _to_uplink_node(self, node: FlowNode) -> uplink.NodeStateDTO:
-        return uplink.NodeStateDTO(
-            parent_id=node.parent.definition.get_id(),
-            predecessor_ids=[p.id for p in node.successors],
-            status=node.status,
-            run_id=node.run_id,
+            ],
+            nodes=[
+                uplink.NodeDTO(
+                    id=node.id,
+                    parent_id=node.parent.definition.get_id(),
+                    predecessor_ids=[p.id for p in node.successors],
+                    status=node.status,
+                    run_id=node.run_id,
+                )
+                for step in self.steps
+                for node in step.nodes
+            ],
         )
 
     def __debug_print(self):
@@ -319,7 +322,7 @@ class Runner:
             if all(n.done for n in reference.parent.nodes):
                 reference.parent.done = True
         # Inform the platform about the node update
-        self.uplink.enqueue_node_update(reference.id, self.graph._to_uplink_node(reference))
+        self.uplink.submit_update(self.graph._to_uplink_dto())
 
     @staticmethod
     def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
@@ -391,7 +394,6 @@ class Runner:
     def run(self):
         # Start communicating updates to the platform
         try:
-            self.uplink.post_graph(self.graph)
             self.uplink.run_async()
         except Exception as e:
             self.uplink.terminate()
@@ -422,7 +424,7 @@ class Runner:
                     step.nodes.append(node)
                     closed_steps.add(step)
                     open_steps.update(step.successors)
-                    self.uplink.enqueue_node_update(node.id, self.graph._to_uplink_node(node))
+                    self.uplink.submit_update(self.graph._to_uplink_dto())
                     continue
                 # Run the node asynchronously
                 step.definition.set_state("running")
@@ -434,7 +436,7 @@ class Runner:
                     job = self.__create_job(node, input)
                     self.pool.run(job)
                     step.nodes.append(node)
-                    self.uplink.enqueue_node_update(node.id, self.graph._to_uplink_node(node))
+                    self.uplink.submit_update(self.graph._to_uplink_dto())
 
             # Wait until at least one task is done
             task_done = False
@@ -455,3 +457,6 @@ class Runner:
                 with self.lock_fail:
                     if self.fail:
                         raise RuntimeError(f"Flow failed: {self.fail_reason}")
+
+        # Terminate uplink
+        self.uplink.terminate()
