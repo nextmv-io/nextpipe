@@ -269,7 +269,10 @@ class Runner:
         """
         # If the step has no predecessors, the input is the flow input.
         if not step.predecessors:
-            return [self.spec.input]
+            inputs = [self.spec.input]
+            if step.definition.is_repeat():
+                inputs = inputs * step.definition.get_repetitions()
+            return inputs
         # Collect all inputs from predecessors.
         predecessor_inputs = {}
         for predecessor in step.predecessors:

@@ -2,11 +2,11 @@ import json
 
 import nextmv
 
-from nextpipe import FlowSpec, app, needs, repeat, step
+from nextpipe import FlowSpec, app, log, needs, repeat, step
 
 # Define the options for the workflow
 parameters = [
-    nextmv.Parameter("instance", str, "devint", "App instance to use. Default is devint.", False),
+    nextmv.Parameter("instance", str, "latest", "App instance to use. Default is devint.", False),
 ]
 options = nextmv.Options(*parameters)
 
@@ -28,6 +28,7 @@ class Flow(FlowSpec):
     @step
     def pick_best(results: list[dict]):
         """Aggregates the results."""
+        log(f"Values: {[result['statistics']['result']['value'] for result in results]}")
         best_solution_idx = min(
             range(len(results)),
             key=lambda i: results[i]["statistics"]["result"]["value"],

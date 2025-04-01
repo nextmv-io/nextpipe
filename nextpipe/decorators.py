@@ -2,8 +2,6 @@ from enum import Enum
 from functools import wraps
 from typing import Callable
 
-from pathos.multiprocessing import ProcessingPool as Pool
-
 from . import utils
 
 
@@ -131,17 +129,8 @@ class Repeat:
 
 def repeat(repetitions: int):
     def decorator(function):
-        @wraps(function)
-        def wrapper(*args, **kwargs):
-            inputs = [(args, kwargs) for _ in range(repetitions)]
-            outputs = []
-            with Pool(repetitions) as pool:
-                outputs = pool.map(utils.wrap_func(function), inputs)
-            return outputs
-
-        wrapper.step.repeat = Repeat(repetitions)
-
-        return wrapper
+        function.step.repeat = Repeat(repetitions)
+        return function
 
     return decorator
 
