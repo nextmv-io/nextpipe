@@ -58,7 +58,7 @@ jobs:
 
       - name: bump version in requirements.txt
         run: |
-          bash .nextmv/bump_requirements.sh
+          bash .nextmv/bump_requirements.sh ${{ env.VERSION }}
         working-directory: ./nextpipe
 
       - name: commit new version
