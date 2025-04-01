@@ -10,6 +10,7 @@ from nextmv.cloud import Client
 from nextpipe.utils import log_internal
 
 FAILED_UPDATES_THRESHOLD = 10
+UPDATE_INTERVAL = 5
 
 ENV_APP_ID = "NEXTMV_APP_ID"
 ENV_RUN_ID = "NEXTMV_RUN_ID"
@@ -144,7 +145,7 @@ class UplinkClient:
         def run():
             while not self._terminate:
                 # Sleep
-                time.sleep(1)
+                time.sleep(UPDATE_INTERVAL)
                 # Post update, if any
                 if self.changed:
                     with self._lock:
