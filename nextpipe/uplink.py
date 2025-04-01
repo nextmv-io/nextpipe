@@ -66,10 +66,6 @@ class FlowDTO:
     Represents a flow in the platform.
     """
 
-    updated_at: str
-    """
-    Time of the update as an RFC3339 string.
-    """
     steps: list[StepDTO]
     """
     Steps in the flow.
@@ -77,6 +73,10 @@ class FlowDTO:
     nodes: list[NodeDTO]
     """
     Nodes and their current state.
+    """
+    updated_at: str = None
+    """
+    Time of the update as an RFC3339 string. Will be set automatically.
     """
 
 
