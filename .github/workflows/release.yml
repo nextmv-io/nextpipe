@@ -56,9 +56,14 @@ jobs:
         run: hatch version ${{ env.VERSION }}
         working-directory: ./nextpipe
 
+      - name: bump version in requirements.txt
+        run: |
+          bash .nextmv/bump_requirements.sh
+        working-directory: ./nextpipe
+
       - name: commit new version
         run: |
-          git add nextpipe/__about__.py
+          git add --all
           git commit -S -m "Bump version to $VERSION"
           git push
           git tag $VERSION
