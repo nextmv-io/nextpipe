@@ -116,7 +116,7 @@ class UplinkClient:
         self.flow.updated_at = timestamp
         resp = self.client.request(
             "PUT",
-            f"/v1/applications/{self.config.application_id}/runs/{self.config.run_id}/flow",
+            f"/v1/internal/applications/{self.config.application_id}/runs/{self.config.run_id}/flow",
             payload=self.flow.to_dict(),
         )
         if not resp.ok:
