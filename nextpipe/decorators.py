@@ -19,7 +19,6 @@ class Step:
     def __init__(self, function: callable):
         self.function = function
         self.type = StepType.DEFAULT
-        self.state = "pending"
         self.run_ids = []
         self._inputs = {}
         self._output = None
@@ -36,12 +35,6 @@ class Step:
 
     def get_id(self):
         return self.function.__name__
-
-    def set_state(self, state: str):
-        self.state = state
-
-    def get_state(self):
-        return self.state
 
     def is_needs(self):
         return hasattr(self, "needs")

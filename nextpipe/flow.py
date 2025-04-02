@@ -12,6 +12,11 @@ from nextmv.cloud import Application, Client, StatusV2
 
 from . import config, decorators, graph, schema, threads, uplink, utils
 
+STATUS_PENDING = "pending"
+STATUS_RUNNING = "running"
+STATUS_SUCCEEDED = "succeeded"
+STATUS_FAILED = "failed"
+
 
 class FlowStep:
     def __init__(
@@ -38,7 +43,7 @@ class FlowNode:
         self.parent = parent
         self.index = index
         self.id = f"{parent.definition.get_id()}_{index}"
-        self.status: str = "pending"
+        self.status: str = STATUS_PENDING
         self.error: str = None
         self.predecessors: list[FlowNode] = []
         self.run_id: str = None
@@ -313,7 +318,7 @@ class Runner:
         Callback function for a job. This function is called by the pool manager when a job is done.
         """
         reference: FlowNode = job.reference
-        reference.status = "succeeded" if job.error is None else "failed"
+        reference.status = STATUS_SUCCEEDED if job.error is None else STATUS_FAILED
         reference.result = job.result
         reference.error = job.error
         # Check if the job failed and mark the flow as failed if it did
@@ -422,10 +427,9 @@ class Runner:
                 # Skip the step if it is optional and the condition is not met
                 if step.definition.skip():
                     utils.log_internal(f"Skipping step {step.definition.get_id()}")
-                    step.definition.set_state("skipped")
                     # Create dummy node
                     node = FlowNode(step, 0)
-                    node.status = "skipped"
+                    node.status = STATUS_SUCCEEDED
                     node.result = None
                     step.nodes.append(node)
                     closed_steps.add(step)
@@ -433,7 +437,6 @@ class Runner:
                     self.uplink.submit_update(self.graph._to_uplink_dto())
                     continue
                 # Run the node asynchronously
-                step.definition.set_state("running")
                 with self.lock_running:
                     running_steps.add(step)
                 inputs = self.__prepare_inputs(step)
