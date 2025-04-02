@@ -2,21 +2,26 @@ import datetime
 import os
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from dataclasses_json import dataclass_json
+from dataclasses_json import config, dataclass_json
 from nextmv.cloud import Client
 
 from nextpipe.utils import log_internal
 
 FAILED_UPDATES_THRESHOLD = 10
 UPDATE_INTERVAL = 5
+MAX_DOCS_LENGTH = 1000
 
 ENV_APP_ID = "NEXTMV_APP_ID"
 ENV_RUN_ID = "NEXTMV_RUN_ID"
 
 
 # TODO REMOVE INTERNAL LOG STATEMENTS BEFORE MERGING!
+
+
+def ExcludeIfNone(value):
+    return value is None
 
 
 @dataclass
@@ -57,7 +62,7 @@ class NodeDTO:
     """
     Status of the node.
     """
-    run_id: str = None
+    run_id: str = field(default=None, metadata=config(exclude=ExcludeIfNone))
     """
     ID of the associated run, if any.
     """
@@ -103,10 +108,6 @@ class UplinkClient:
     """
 
     def __init__(self, client: Client, config: UplinkConfig):
-        log_internal("Initializing Uplink client...")
-        for key, value in os.environ.items():
-            if key.startswith("NEXTMV_"):
-                log_internal(f"Environment variable {key}={value}")
         if config is None:
             # Load config from environment
             config = UplinkConfig(
@@ -140,20 +141,21 @@ class UplinkClient:
             payload=self.flow.to_dict(),
         )
         if not resp.ok:
-            log_internal(f"Failed to post flow update: {resp.status_code} {resp.text}")
             raise Exception(f"Failed to post flow update: {resp.text}")
-        else:
-            log_internal(f"Flow update posted successfully: {resp.status_code}")
 
     def submit_update(self, flow: FlowUpdateDTO):
         """
         Posts the full flow and its state to the platform.
         """
-        log_internal("Submitting flow update...")
         if self.inactive or self._terminate:
             return
         if not isinstance(flow, FlowUpdateDTO):
             raise ValueError(f"Expected FlowDTO, got {type(flow)}")
+        # Truncate docs to a maximum length
+        for step in flow.pipeline_graph.steps:
+            if len(step.docs) > MAX_DOCS_LENGTH:
+                step.docs = step.docs[:MAX_DOCS_LENGTH] + "..."
+        # Inform the client about the new flow
         with self._lock:
             self.flow = flow
             self.changed = True
@@ -185,7 +187,6 @@ class UplinkClient:
                     self._updates_failed = 0
                 # Sleep
                 time.sleep(UPDATE_INTERVAL)
-                log_internal("Uplink client is running...")
 
             # Signal termination
             self._terminated = True
@@ -205,10 +206,8 @@ class UplinkClient:
             time.sleep(0.1)
 
         # Send final update
-        log_internal(
-            "Uplink client is terminating "
-            + f"(changed: {self.changed}, terminate: {self._terminate}, failed: {self._updates_failed})"
-        )
+        if self._updates_failed > 0:
+            log_internal(f"Uplink client is terminating (failed updates: {self._updates_failed})")
         if self.changed:
             try:
                 self._post_node_update()
