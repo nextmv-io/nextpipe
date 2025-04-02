@@ -37,7 +37,7 @@ class StepDTO:
     """The ID of the step."""
     predecessors: list[str]
     """The IDs of the nodes that depend on this node."""
-    docs: str
+    docs: str = ""
     """The doc string of the step."""
     app_id: str = field(default=None, metadata=config(exclude=ExcludeIfNone))
     """The ID of the app this step represents (if any)."""
