@@ -45,7 +45,6 @@ def _create_example_flow() -> FlowUpdateDTO:
         StepDTO(
             id="enhance",
             app_id=None,
-            docs="Enhances the result.",
             predecessors=["solve"],
         ),
     ]

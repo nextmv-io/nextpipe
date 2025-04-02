@@ -37,7 +37,7 @@ class StepDTO:
     """The ID of the step."""
     predecessors: list[str]
     """The IDs of the nodes that depend on this node."""
-    docs: str
+    docs: str = field(default=None, metadata=config(exclude=ExcludeIfNone))
     """The doc string of the step."""
     app_id: str = field(default=None, metadata=config(exclude=ExcludeIfNone))
     """The ID of the app this step represents (if any)."""
@@ -153,7 +153,7 @@ class UplinkClient:
             raise ValueError(f"Expected FlowDTO, got {type(flow)}")
         # Truncate docs to a maximum length
         for step in flow.pipeline_graph.steps:
-            if len(step.docs) > MAX_DOCS_LENGTH:
+            if step.docs and len(step.docs) > MAX_DOCS_LENGTH:
                 step.docs = step.docs[:MAX_DOCS_LENGTH] + "..."
         # Inform the client about the new flow
         with self._lock:
