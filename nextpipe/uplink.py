@@ -168,9 +168,6 @@ class UplinkClient:
 
         def run():
             while not self._terminate:
-                # Sleep
-                time.sleep(UPDATE_INTERVAL)
-                log_internal("Uplink client is running...")
                 # Post update, if any
                 if self.changed:
                     with self._lock:
@@ -186,6 +183,9 @@ class UplinkClient:
                                 self._terminate = True
                 else:
                     self._updates_failed = 0
+                # Sleep
+                time.sleep(UPDATE_INTERVAL)
+                log_internal("Uplink client is running...")
 
             # Signal termination
             self._terminated = True

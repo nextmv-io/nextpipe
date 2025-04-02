@@ -399,6 +399,7 @@ class Runner:
     def run(self):
         # Start communicating updates to the platform
         try:
+            self.uplink.submit_update(self.graph._to_uplink_dto())
             self.uplink.run_async()
         except Exception as e:
             self.uplink.terminate()
