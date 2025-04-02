@@ -5,7 +5,7 @@ import unittest
 import nextmv.cloud
 
 from nextpipe import FlowSpec, app, needs, step
-from nextpipe.uplink import FlowDTO, NodeDTO, StepDTO, UplinkClient
+from nextpipe.uplink import FlowDTO, FlowUpdateDTO, NodeDTO, StepDTO, UplinkClient
 
 
 class Flow(FlowSpec):
@@ -28,7 +28,7 @@ class Flow(FlowSpec):
         return result
 
 
-def _create_example_flow() -> FlowDTO:
+def _create_example_flow() -> FlowUpdateDTO:
     steps = [
         StepDTO(
             id="prepare",
@@ -79,9 +79,8 @@ def _create_example_flow() -> FlowDTO:
             run_id=None,
         ),
     ]
-    flow = FlowDTO(
-        steps=steps,
-        nodes=nodes,
+    flow = FlowUpdateDTO(
+        pipeline_graph=FlowDTO(steps=steps, nodes=nodes),
         updated_at="2023-10-01T12:00:00Z",
     )
 

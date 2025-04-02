@@ -16,6 +16,9 @@ ENV_APP_ID = "NEXTMV_APP_ID"
 ENV_RUN_ID = "NEXTMV_RUN_ID"
 
 
+# TODO REMOVE INTERNAL LOG STATEMENTS BEFORE MERGING!
+
+
 @dataclass
 class UplinkConfig:
     application_id: str
@@ -64,7 +67,7 @@ class NodeDTO:
 @dataclass
 class FlowDTO:
     """
-    Represents a flow in the platform.
+    Represents a flow and more importantly its graph and state.
     """
 
     steps: list[StepDTO]
@@ -74,6 +77,19 @@ class FlowDTO:
     nodes: list[NodeDTO]
     """
     Nodes and their current state.
+    """
+
+
+@dataclass_json
+@dataclass
+class FlowUpdateDTO:
+    """
+    Represents a flow in the platform.
+    """
+
+    pipeline_graph: FlowDTO
+    """
+    The graph of the pipeline.
     """
     updated_at: str = None
     """
@@ -87,6 +103,10 @@ class UplinkClient:
     """
 
     def __init__(self, client: Client, config: UplinkConfig):
+        log_internal("Initializing Uplink client...")
+        for key, value in os.environ.items():
+            if key.startswith("NEXTMV_"):
+                log_internal(f"Environment variable {key}={value}")
         if config is None:
             # Load config from environment
             config = UplinkConfig(
@@ -120,15 +140,19 @@ class UplinkClient:
             payload=self.flow.to_dict(),
         )
         if not resp.ok:
+            log_internal(f"Failed to post flow update: {resp.status_code} {resp.text}")
             raise Exception(f"Failed to post flow update: {resp.text}")
+        else:
+            log_internal(f"Flow update posted successfully: {resp.status_code}")
 
-    def submit_update(self, flow: FlowDTO):
+    def submit_update(self, flow: FlowUpdateDTO):
         """
         Posts the full flow and its state to the platform.
         """
+        log_internal("Submitting flow update...")
         if self.inactive or self._terminate:
             return
-        if not isinstance(flow, FlowDTO):
+        if not isinstance(flow, FlowUpdateDTO):
             raise ValueError(f"Expected FlowDTO, got {type(flow)}")
         with self._lock:
             self.flow = flow
@@ -146,14 +170,16 @@ class UplinkClient:
             while not self._terminate:
                 # Sleep
                 time.sleep(UPDATE_INTERVAL)
+                log_internal("Uplink client is running...")
                 # Post update, if any
                 if self.changed:
                     with self._lock:
                         try:
                             self._post_node_update()
                             self.changed = False
-                        except Exception:
+                        except Exception as e:
                             # Update failed, keep in pending
+                            log_internal(f"Failed to post flow update (#{self._updates_failed}): {e}")
                             self._updates_failed += 1
                             if self._updates_failed > FAILED_UPDATES_THRESHOLD:
                                 # Too many failed updates, terminate
@@ -179,6 +205,10 @@ class UplinkClient:
             time.sleep(0.1)
 
         # Send final update
+        log_internal(
+            "Uplink client is terminating "
+            + f"(changed: {self.changed}, terminate: {self._terminate}, failed: {self._updates_failed})"
+        )
         if self.changed:
             try:
                 self._post_node_update()

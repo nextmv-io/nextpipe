@@ -187,28 +187,30 @@ class FlowGraph:
                     out.write(f"  {id} {self.__get_arrow(step, successor)} {successor.definition.get_id()}\n")
         return out.getvalue()
 
-    def _to_uplink_dto(self) -> uplink.FlowDTO:
-        return uplink.FlowDTO(
-            steps=[
-                uplink.StepDTO(
-                    id=step.definition.get_id(),
-                    app_id=step.definition.get_app_id(),
-                    docs=step.docstring,
-                    predecessors=[s.definition.get_id() for s in step.successors],
-                )
-                for step in self.steps
-            ],
-            nodes=[
-                uplink.NodeDTO(
-                    id=node.id,
-                    parent_id=node.parent.definition.get_id(),
-                    predecessor_ids=[p.id for p in node.successors],
-                    status=node.status,
-                    run_id=node.run_id,
-                )
-                for step in self.steps
-                for node in step.nodes
-            ],
+    def _to_uplink_dto(self) -> uplink.FlowUpdateDTO:
+        return uplink.FlowUpdateDTO(
+            pipeline_graph=uplink.FlowDTO(
+                steps=[
+                    uplink.StepDTO(
+                        id=step.definition.get_id(),
+                        app_id=step.definition.get_app_id(),
+                        docs=step.docstring,
+                        predecessors=[s.definition.get_id() for s in step.successors],
+                    )
+                    for step in self.steps
+                ],
+                nodes=[
+                    uplink.NodeDTO(
+                        id=node.id,
+                        parent_id=node.parent.definition.get_id(),
+                        predecessor_ids=[p.id for p in node.successors],
+                        status=node.status,
+                        run_id=node.run_id,
+                    )
+                    for step in self.steps
+                    for node in step.nodes
+                ],
+            ),
         )
 
     def __debug_print(self):
