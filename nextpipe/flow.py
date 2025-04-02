@@ -12,6 +12,11 @@ from nextmv.cloud import Application, Client, StatusV2
 
 from . import config, decorators, graph, schema, threads, uplink, utils
 
+STATUS_PENDING = "pending"
+STATUS_RUNNING = "running"
+STATUS_SUCCEEDED = "succeeded"
+STATUS_FAILED = "failed"
+
 
 class FlowStep:
     def __init__(
@@ -38,9 +43,9 @@ class FlowNode:
         self.parent = parent
         self.index = index
         self.id = f"{parent.definition.get_id()}_{index}"
-        self.status: str = "pending"
+        self.status: str = STATUS_PENDING
         self.error: str = None
-        self.successors: list[FlowNode] = []
+        self.predecessors: list[FlowNode] = []
         self.run_id: str = None
         self.result: any = None
         self.done: bool = False
@@ -65,7 +70,7 @@ class FlowSpec:
         # Create the graph
         self.graph = FlowGraph(self.__class__)
         # Inform platform about the graph
-        self.uplink.post_graph(self.graph._to_uplink_dag())
+        self.uplink.submit_update(self.graph._to_uplink_dto())
         # Prepare for running the flow
         self.input = input
         self.runner = Runner(
@@ -133,9 +138,9 @@ class FlowGraph:
             if not step.definition.is_needs():
                 continue
             for predecessor in step.definition.needs.predecessors:
-                predecessor_node = self.steps_by_definition[predecessor.step]
-                step.predecessors.append(predecessor_node)
-                predecessor_node.successors.append(step)
+                predecessor_step = self.steps_by_definition[predecessor.step]
+                step.predecessors.append(predecessor_step)
+                predecessor_step.successors.append(step)
 
         self.start_steps = [step for step in self.steps if not step.predecessors]
 
@@ -187,25 +192,30 @@ class FlowGraph:
                     out.write(f"  {id} {self.__get_arrow(step, successor)} {successor.definition.get_id()}\n")
         return out.getvalue()
 
-    def _to_uplink_dag(self) -> uplink.FlowDTO:
-        return uplink.FlowDTO(
-            steps=[
-                uplink.StepDTO(
-                    id=step.definition.get_id(),
-                    app_id=step.definition.get_app_id(),
-                    docs=step.docstring,
-                    predecessors=[s.definition.get_id() for s in step.successors],
-                )
-                for step in self.steps
-            ]
-        )
-
-    def _to_uplink_node(self, node: FlowNode) -> uplink.NodeStateDTO:
-        return uplink.NodeStateDTO(
-            parent_id=node.parent.definition.get_id(),
-            predecessor_ids=[p.id for p in node.successors],
-            status=node.status,
-            run_id=node.run_id,
+    def _to_uplink_dto(self) -> uplink.FlowUpdateDTO:
+        return uplink.FlowUpdateDTO(
+            pipeline_graph=uplink.FlowDTO(
+                steps=[
+                    uplink.StepDTO(
+                        id=step.definition.get_id(),
+                        app_id=step.definition.get_app_id(),
+                        docs=step.docstring,
+                        predecessors=[s.definition.get_id() for s in step.predecessors],
+                    )
+                    for step in self.steps
+                ],
+                nodes=[
+                    uplink.NodeDTO(
+                        id=node.id,
+                        parent_id=node.parent.definition.get_id(),
+                        predecessor_ids=[p.id for p in node.predecessors],
+                        status=node.status,
+                        run_id=node.run_id,
+                    )
+                    for step in self.steps
+                    for node in step.nodes
+                ],
+            ),
         )
 
     def __debug_print(self):
@@ -266,7 +276,10 @@ class Runner:
         """
         # If the step has no predecessors, the input is the flow input.
         if not step.predecessors:
-            return [self.spec.input]
+            inputs = [self.spec.input]
+            if step.definition.is_repeat():
+                inputs = inputs * step.definition.get_repetitions()
+            return inputs
         # Collect all inputs from predecessors.
         predecessor_inputs = {}
         for predecessor in step.predecessors:
@@ -305,7 +318,7 @@ class Runner:
         Callback function for a job. This function is called by the pool manager when a job is done.
         """
         reference: FlowNode = job.reference
-        reference.status = "succeeded" if job.error is None else "failed"
+        reference.status = STATUS_SUCCEEDED if job.error is None else STATUS_FAILED
         reference.result = job.result
         reference.error = job.error
         # Check if the job failed and mark the flow as failed if it did
@@ -319,7 +332,7 @@ class Runner:
             if all(n.done for n in reference.parent.nodes):
                 reference.parent.done = True
         # Inform the platform about the node update
-        self.uplink.enqueue_node_update(reference.id, self.graph._to_uplink_node(reference))
+        self.uplink.submit_update(self.graph._to_uplink_dto())
 
     @staticmethod
     def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
@@ -391,7 +404,7 @@ class Runner:
     def run(self):
         # Start communicating updates to the platform
         try:
-            self.uplink.post_graph(self.graph)
+            self.uplink.submit_update(self.graph._to_uplink_dto())
             self.uplink.run_async()
         except Exception as e:
             self.uplink.terminate()
@@ -414,18 +427,16 @@ class Runner:
                 # Skip the step if it is optional and the condition is not met
                 if step.definition.skip():
                     utils.log_internal(f"Skipping step {step.definition.get_id()}")
-                    step.definition.set_state("skipped")
                     # Create dummy node
                     node = FlowNode(step, 0)
-                    node.status = "skipped"
+                    node.status = STATUS_SUCCEEDED
                     node.result = None
                     step.nodes.append(node)
                     closed_steps.add(step)
                     open_steps.update(step.successors)
-                    self.uplink.enqueue_node_update(node.id, self.graph._to_uplink_node(node))
+                    self.uplink.submit_update(self.graph._to_uplink_dto())
                     continue
                 # Run the node asynchronously
-                step.definition.set_state("running")
                 with self.lock_running:
                     running_steps.add(step)
                 inputs = self.__prepare_inputs(step)
@@ -434,7 +445,7 @@ class Runner:
                     job = self.__create_job(node, input)
                     self.pool.run(job)
                     step.nodes.append(node)
-                    self.uplink.enqueue_node_update(node.id, self.graph._to_uplink_node(node))
+                    self.uplink.submit_update(self.graph._to_uplink_dto())
 
             # Wait until at least one task is done
             task_done = False
@@ -455,3 +466,6 @@ class Runner:
                 with self.lock_fail:
                     if self.fail:
                         raise RuntimeError(f"Flow failed: {self.fail_reason}")
+
+        # Terminate uplink
+        self.uplink.terminate()

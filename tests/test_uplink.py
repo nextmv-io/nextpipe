@@ -5,7 +5,7 @@ import unittest
 import nextmv.cloud
 
 from nextpipe import FlowSpec, app, needs, step
-from nextpipe.uplink import FlowDTO, NodeStateDTO, StepDTO, UplinkClient
+from nextpipe.uplink import FlowDTO, FlowUpdateDTO, NodeDTO, StepDTO, UplinkClient
 
 
 class Flow(FlowSpec):
@@ -28,7 +28,7 @@ class Flow(FlowSpec):
         return result
 
 
-def _create_example_flow() -> tuple[FlowDTO, dict[str, NodeStateDTO]]:
+def _create_example_flow() -> FlowUpdateDTO:
     steps = [
         StepDTO(
             id="prepare",
@@ -49,41 +49,47 @@ def _create_example_flow() -> tuple[FlowDTO, dict[str, NodeStateDTO]]:
             predecessors=["solve"],
         ),
     ]
-    flow = FlowDTO(
-        steps=steps,
-    )
-    node_updates = {
-        "prepare_0": NodeStateDTO(
+    nodes = [
+        NodeDTO(
+            id="prepare_0",
             parent_id="prepare",
             predecessor_ids=[],
             status="succeeded",
             run_id=None,
         ),
-        "solve_0": NodeStateDTO(
+        NodeDTO(
+            id="solve_0",
             parent_id="solve",
             predecessor_ids=["prepare_0"],
             status="succeeded",
             run_id="run-123",
         ),
-        "solve_1": NodeStateDTO(
+        NodeDTO(
+            id="solve_1",
             parent_id="solve",
             predecessor_ids=["prepare_0"],
             status="succeeded",
             run_id="run-124",
         ),
-        "enhance_0": NodeStateDTO(
+        NodeDTO(
+            id="enhance_0",
             parent_id="enhance",
             predecessor_ids=["solve_0", "solve_1"],
             status="succeeded",
             run_id=None,
         ),
-    }
-    return flow, node_updates
+    ]
+    flow = FlowUpdateDTO(
+        pipeline_graph=FlowDTO(steps=steps, nodes=nodes),
+        updated_at="2023-10-01T12:00:00Z",
+    )
+
+    return flow
 
 
 class TestLogger(unittest.TestCase):
     def test_no_uplink(self):
-        flow, node_updates = _create_example_flow()
+        flow = _create_example_flow()
         client = nextmv.cloud.Client(
             api_key="unavailable",
             max_retries=0,
@@ -92,8 +98,7 @@ class TestLogger(unittest.TestCase):
         # Make sure that unavailable uplink connection does not break a run.
         uplink = UplinkClient(client=client, config=None)
         uplink.run_async()
-        uplink.post_graph(flow)
-        uplink.enqueue_node_update(*(list(node_updates.items())[0]))
+        uplink.submit_update(flow)
         time.sleep(0.5)
         uplink.terminate()
         time.sleep(0.5)

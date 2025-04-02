@@ -2,8 +2,6 @@ from enum import Enum
 from functools import wraps
 from typing import Callable
 
-from pathos.multiprocessing import ProcessingPool as Pool
-
 from . import utils
 
 
@@ -21,7 +19,6 @@ class Step:
     def __init__(self, function: callable):
         self.function = function
         self.type = StepType.DEFAULT
-        self.state = "pending"
         self.run_ids = []
         self._inputs = {}
         self._output = None
@@ -38,12 +35,6 @@ class Step:
 
     def get_id(self):
         return self.function.__name__
-
-    def set_state(self, state: str):
-        self.state = state
-
-    def get_state(self):
-        return self.state
 
     def is_needs(self):
         return hasattr(self, "needs")
@@ -131,17 +122,8 @@ class Repeat:
 
 def repeat(repetitions: int):
     def decorator(function):
-        @wraps(function)
-        def wrapper(*args, **kwargs):
-            inputs = [(args, kwargs) for _ in range(repetitions)]
-            outputs = []
-            with Pool(repetitions) as pool:
-                outputs = pool.map(utils.wrap_func(function), inputs)
-            return outputs
-
-        wrapper.step.repeat = Repeat(repetitions)
-
-        return wrapper
+        function.step.repeat = Repeat(repetitions)
+        return function
 
     return decorator
 
