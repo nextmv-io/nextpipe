@@ -40,7 +40,7 @@ class FlowNode:
         self.id = f"{parent.definition.get_id()}_{index}"
         self.status: str = "pending"
         self.error: str = None
-        self.successors: list[FlowNode] = []
+        self.predecessors: list[FlowNode] = []
         self.run_id: str = None
         self.result: any = None
         self.done: bool = False
@@ -133,9 +133,9 @@ class FlowGraph:
             if not step.definition.is_needs():
                 continue
             for predecessor in step.definition.needs.predecessors:
-                predecessor_node = self.steps_by_definition[predecessor.step]
-                step.predecessors.append(predecessor_node)
-                predecessor_node.successors.append(step)
+                predecessor_step = self.steps_by_definition[predecessor.step]
+                step.predecessors.append(predecessor_step)
+                predecessor_step.successors.append(step)
 
         self.start_steps = [step for step in self.steps if not step.predecessors]
 
@@ -195,7 +195,7 @@ class FlowGraph:
                         id=step.definition.get_id(),
                         app_id=step.definition.get_app_id(),
                         docs=step.docstring,
-                        predecessors=[s.definition.get_id() for s in step.successors],
+                        predecessors=[s.definition.get_id() for s in step.predecessors],
                     )
                     for step in self.steps
                 ],
@@ -203,7 +203,7 @@ class FlowGraph:
                     uplink.NodeDTO(
                         id=node.id,
                         parent_id=node.parent.definition.get_id(),
-                        predecessor_ids=[p.id for p in node.successors],
+                        predecessor_ids=[p.id for p in node.predecessors],
                         status=node.status,
                         run_id=node.run_id,
                     )
