@@ -465,6 +465,10 @@ class Runner:
                 # Raise an exception if the flow failed
                 with self.lock_fail:
                     if self.fail:
+                        # Submitting the final state and terminating uplink causes the last
+                        # update to be send to the platform (reflecting the final state).
+                        self.uplink.submit_update(self.graph._to_uplink_dto())
+                        self.uplink.terminate()  # This will issue the final update.
                         raise RuntimeError(f"Flow failed: {self.fail_reason}")
 
         # Terminate uplink
