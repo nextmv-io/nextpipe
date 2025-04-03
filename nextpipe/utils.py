@@ -3,6 +3,7 @@ import sys
 import threading
 import time
 from functools import wraps
+from typing import Callable
 
 from nextmv.cloud import Application, RunResult, StatusV2
 
@@ -63,6 +64,7 @@ def wait_for_runs(
     run_ids: list[str],
     timeout: float = _INFINITE_TIMEOUT,
     max_backoff: float = 30,
+    stop_waiting: Callable[[], bool] = lambda: False,
 ) -> list[RunResult]:
     """
     Wait until all runs with the given IDs are finished.
@@ -73,6 +75,8 @@ def wait_for_runs(
     backoff = 2.0 + jitter  # With base and jitter we aim for a backoff start between 2 and 4 seconds
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
+        if stop_waiting():
+            raise RuntimeError("The job was canceled.")
         time.sleep(backoff)
         backoff = min(backoff * 2, max_backoff)
 
