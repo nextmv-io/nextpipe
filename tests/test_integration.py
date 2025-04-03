@@ -27,7 +27,7 @@ class TestPlatform(unittest.TestCase):
             print(f"Test app id: {APP_ID}")
 
             # Create app for testing
-            app = cloud.Application.new(CLIENT, APP_ID, APP_ID, is_pipeline=True)
+            app = cloud.Application.new(CLIENT, APP_ID, APP_ID, is_workflow=True)
             self.assertEqual(app.id, APP_ID)
 
             # Check if app is created
