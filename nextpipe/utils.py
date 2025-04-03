@@ -73,13 +73,24 @@ def wait_for_runs(
     jitter = random.random() * 2.0
     missing = set(run_ids)
     backoff = 2.0 + jitter  # With base and jitter we aim for a backoff start between 2 and 4 seconds
+    next_check = time.time() + backoff  # First check with some delay as external runs are not that fast
+    internal_poll_interval = 0.5
     start_time = time.time()
     while missing and time.time() - start_time < timeout:
+        # Check if the user wants to stop waiting
         if stop_waiting():
             raise RuntimeError("The job was canceled.")
-        time.sleep(backoff)
-        backoff = min(backoff * 2, max_backoff)
 
+        # Check whether it is time to check the status of the runs. This allows quicker
+        # early termination if cancelled.
+        time.sleep(internal_poll_interval)
+        now = time.time()
+        if now < next_check:
+            continue
+        backoff = min(backoff * 2, max_backoff)
+        next_check = now + backoff
+
+        # Check if all runs are finished
         for run_id in missing.copy():
             run_info = app.run_metadata(run_id=run_id)
             if run_info.metadata.status_v2 == StatusV2.succeeded:
