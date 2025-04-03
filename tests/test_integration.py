@@ -27,7 +27,7 @@ class TestPlatform(unittest.TestCase):
             print(f"Test app id: {APP_ID}")
 
             # Create app for testing
-            app = cloud.Application.new(CLIENT, APP_ID, APP_ID)
+            app = cloud.Application.new(CLIENT, APP_ID, APP_ID, is_pipeline=True)
             self.assertEqual(app.id, APP_ID)
 
             # Check if app is created
@@ -45,7 +45,7 @@ class TestPlatform(unittest.TestCase):
 
             # Run the app
             r = random.randint(0, 100)
-            polling_opts = cloud.PollingOptions(max_tries=500, max_duration=60)
+            polling_opts = cloud.PollingOptions(max_tries=500, max_duration=120)
             result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
             self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
             self.assertEqual(result.output["echo"]["data"]["enhanced"], True)
