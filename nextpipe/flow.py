@@ -49,6 +49,7 @@ class FlowNode:
         self.run_id: str = None
         self.result: any = None
         self.done: bool = False
+        self.cancel: bool = False
 
     def __repr__(self):
         return f"FlowNode({self.id})"
@@ -373,7 +374,11 @@ class Runner:
             # Run the application
             run_id = app.new_run(*run_args[0], **run_args[1])
             node.run_id = run_id
-            output = utils.wait_for_runs(app=app, run_ids=[run_id])[0]
+            output = utils.wait_for_runs(
+                app=app,
+                run_ids=[run_id],
+                stop_waiting=lambda: node.cancel,
+            )[0]
             # Check if all runs were successful
             if output.metadata.status_v2 != StatusV2.succeeded:
                 raise Exception(f"Node {node.id} failed with status {output.metadata.status_v2}: {output.error_log}")
@@ -465,6 +470,15 @@ class Runner:
                 # Raise an exception if the flow failed
                 with self.lock_fail:
                     if self.fail:
+                        # Issue cancel to all nodes
+                        for step in running_steps:
+                            for node in step.nodes:
+                                node.cancel = True
+                                node.status = STATUS_FAILED
+                        # Submitting the final state and terminating uplink causes the last
+                        # update to be send to the platform (reflecting the final state).
+                        self.uplink.submit_update(self.graph._to_uplink_dto())
+                        self.uplink.terminate()  # This will issue the final update.
                         raise RuntimeError(f"Flow failed: {self.fail_reason}")
 
         # Terminate uplink
