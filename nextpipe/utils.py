@@ -139,7 +139,7 @@ def __get_notebook_ast_root(obj: object) -> ast.ClassDef:
     ipython = get_ipython()
 
     # Go backwards in the history to find the cell where the object's class was defined.
-    for i in range(len(ipython.history_manager.input_hist_parsed), 0, -1):
+    for i in range(len(ipython.history_manager.input_hist_parsed) - 1, -1, -1):
         # Parse the code of the cell into an AST.
         tree = ast.parse(ipython.history_manager.input_hist_parsed[i])
 
