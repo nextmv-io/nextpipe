@@ -119,10 +119,7 @@ class FlowGraph:
         return self.steps_by_definition[definition]
 
     def __create_graph(self, flow_spec):
-        module = __import__(flow_spec.__module__)
-        class_name = flow_spec.__name__
-        tree = ast.parse(inspect.getsource(module)).body
-        root = [n for n in tree if isinstance(n, ast.ClassDef) and n.name == class_name][0]
+        root = utils.get_ast_root(flow_spec)
 
         # Build the graph
         self.steps: list[FlowStep] = []

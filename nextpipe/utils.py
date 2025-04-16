@@ -1,3 +1,6 @@
+import ast
+import importlib
+import inspect
 import random
 import sys
 import threading
@@ -106,3 +109,64 @@ def wait_for_runs(
         raise TimeoutError(f"Timeout of {timeout} seconds reached while waiting.")
 
     return [app.run_result(run_id=run_id) for run_id in run_ids]
+
+
+def __is_running_in_notebook():
+    """
+    Check if the code is running in a Jupyter notebook.
+    """
+    try:
+        from IPython import get_ipython
+
+        # Check if the IPython instance is a notebook
+        if "IPKernelApp" in get_ipython().config:
+            return True
+        else:
+            return False
+    except ImportError:
+        return False
+    except AttributeError:
+        return False
+
+
+def __get_notebook_ast_root(obj: object) -> ast.ClassDef:
+    """
+    Find the root AST of the given object in a Jupyter notebook.
+    """
+    from IPython import get_ipython
+
+    # Get the current IPython instance
+    ipython = get_ipython()
+
+    # Go backwards in the history to find the cell where the object's class was defined.
+    for i in range(len(ipython.history_manager.input_hist_parsed), 0, -1):
+        # Parse the code of the cell into an AST.
+        tree = ast.parse(ipython.history_manager.input_hist_parsed[i])
+
+        # Find the class definition for the given object.
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == obj.__class__.__name__:
+                return node
+
+    raise ValueError(f"Could not find AST root for {obj.__class__.__name__} in notebook.")
+
+
+def __get_normal_ast_root(obj: object) -> ast.ClassDef:
+    """
+    Find the root AST of the given object.
+    """
+    module = importlib.import_module(obj.__module__)
+    class_name = obj.__name__
+    tree = ast.parse(inspect.getsource(module)).body
+    root = [n for n in tree if isinstance(n, ast.ClassDef) and n.name == class_name][0]
+    return root
+
+
+def get_ast_root(obj: object) -> ast.ClassDef:
+    """
+    Find the root AST of the given object.
+    """
+    if __is_running_in_notebook():
+        return __get_notebook_ast_root(obj)
+    else:
+        return __get_normal_ast_root(obj)
