@@ -69,7 +69,7 @@ class FlowSpec:
         self.client = Client() if client is None else client
         self.uplink = uplink.UplinkClient(self.client, uplink_config)
         # Create the graph
-        self.graph = FlowGraph(self.__class__)
+        self.graph = FlowGraph(self)
         # Inform platform about the graph
         self.uplink.submit_update(self.graph._to_uplink_dto())
         # Prepare for running the flow
@@ -104,9 +104,9 @@ class FlowSpec:
 
 
 class FlowGraph:
-    def __init__(self, flow_spec_type: type):
-        self.flow_spec_type = flow_spec_type
-        self.__create_graph(flow_spec_type)
+    def __init__(self, flow_spec: FlowSpec):
+        self.flow_spec = flow_spec
+        self.__create_graph(flow_spec)
         self.__debug_print()
         # Create a Mermaid diagram of the graph and log it
         mermaid = self._to_mermaid()
@@ -118,12 +118,12 @@ class FlowGraph:
     def get_step(self, definition: decorators.Step) -> FlowStep:
         return self.steps_by_definition[definition]
 
-    def __create_graph(self, flow_spec):
+    def __create_graph(self, flow_spec: FlowSpec):
         root = utils.get_ast_root(flow_spec)
 
         # Build the graph
         self.steps: list[FlowStep] = []
-        visitor = StepVisitor(self.steps, flow_spec)
+        visitor = StepVisitor(self.steps, flow_spec.__class__)
         visitor.visit(root)
 
         # Init steps for all step definitions
@@ -217,7 +217,7 @@ class FlowGraph:
         )
 
     def __debug_print(self):
-        utils.log_internal(f"Flow: {self.flow_spec_type.__name__}")
+        utils.log_internal(f"Flow: {self.flow_spec.__class__.__name__}")
         utils.log_internal(f"nextpipe: {version('nextpipe')}")
         utils.log_internal(f"nextmv: {version('nextmv')}")
         utils.log_internal("Flow graph steps:")
@@ -228,13 +228,13 @@ class FlowGraph:
 
 
 class StepVisitor(ast.NodeVisitor):
-    def __init__(self, steps: list[FlowStep], flow: FlowSpec):
+    def __init__(self, steps: list[FlowStep], flow_class: type):
         self.steps = steps
-        self.flow = flow
+        self.flow_class = flow_class
         super().__init__()
 
     def visit_FunctionDef(self, step_function):
-        func = getattr(self.flow, step_function.name)
+        func = getattr(self.flow_class, step_function.name)
         if hasattr(func, "is_step"):
             self.steps.append(FlowStep(step_function, func.step, func.__doc__))
 
@@ -307,7 +307,7 @@ class Runner:
         if len(inputs) > self.spec.config.max_step_inputs:
             raise Exception(
                 f"Step {step.definition.get_id()} has too many inputs ({len(inputs)}). "
-                + f"Maximum allowed is {self.graph.flow_spec_type.config.max_step_inputs}."
+                + f"Maximum allowed is {self.graph.flow_spec.config.max_step_inputs}."
             )
         return inputs
 

@@ -155,8 +155,8 @@ def __get_normal_ast_root(obj: object) -> ast.ClassDef:
     """
     Find the root AST of the given object.
     """
-    module = importlib.import_module(obj.__module__)
-    class_name = obj.__name__
+    module = importlib.import_module(obj.__class__.__module__)
+    class_name = obj.__class__.__name__
     tree = ast.parse(inspect.getsource(module)).body
     root = [n for n in tree if isinstance(n, ast.ClassDef) and n.name == class_name][0]
     return root
