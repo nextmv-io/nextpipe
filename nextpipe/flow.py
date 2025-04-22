@@ -1,16 +1,19 @@
 import ast
 import base64
+import copy
 import inspect
 import io
+import random
 import threading
 import time
 from importlib.metadata import version
 from itertools import product
 from typing import Any, Optional, Union
 
-from nextmv.cloud import Application, Client, StatusV2
+from nextmv.cloud import Application, Client
 
 from . import config, decorators, graph, schema, threads, uplink, utils
+from .__about__ import __version__
 
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
@@ -218,7 +221,7 @@ class FlowGraph:
 
     def __debug_print(self):
         utils.log_internal(f"Flow: {self.flow_spec.__class__.__name__}")
-        utils.log_internal(f"nextpipe: {version('nextpipe')}")
+        utils.log_internal(f"nextpipe: {__version__}")
         utils.log_internal(f"nextmv: {version('nextmv')}")
         utils.log_internal("Flow graph steps:")
         for step in self.steps:
@@ -355,34 +358,47 @@ class Runner:
                 # If the input is not AppRunConfig, we use it directly.
                 input = inputs[0]
                 options = app_step.parameters
+
+            # Modify the polling options set for the step (by default or by the
+            # user) so that the initial delay is randomized and the stopping
+            # callback is configured as the node being cancelled if the user
+            # doesn’t want to override it.
+            polling_options = copy.deepcopy(app_step.polling_options)
+            delay = random.uniform(0, 5)  # For lack of a better idea...
+            polling_options.initial_delay = delay
+            if polling_options.stop is None:
+                polling_options.stop = lambda: node.cancel
+            polling_options.verbose = True
+
             run_args = (
                 [],  # No nameless arguments
                 {  # We use the named arguments to pass the user arguments to the run function
                     "input": input,
-                    "options": options,
+                    "run_options": options,
+                    "polling_options": polling_options,
                 },
             )
+
             # Prepare the application itself.
             app = Application(
                 client=client,
                 id=app_step.app_id,
                 default_instance_id=app_step.instance_id,
             )
+
             # Run the application
-            run_id = app.new_run(*run_args[0], **run_args[1])
+            result = app.new_run_with_result(
+                *run_args[0],
+                **run_args[1],
+            )
+            run_id = result.id
             node.run_id = run_id
-            output = utils.wait_for_runs(
-                app=app,
-                run_ids=[run_id],
-                stop_waiting=lambda: node.cancel,
-            )[0]
-            # Check if all runs were successful
-            if output.metadata.status_v2 != StatusV2.succeeded:
-                raise Exception(f"Node {node.id} failed with status {output.metadata.status_v2}: {output.error_log}")
+
             # Return result (do not unwrap if full result is requested)
             if app_step.full_result:
-                return output
-            return output.output
+                return result
+            return result.output
+
         else:
             spec = inspect.getfullargspec(node.parent.definition.function)
             if len(spec.args) == 0:
