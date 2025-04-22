@@ -271,7 +271,7 @@ def join(f: Callable = None):
     """
     Decorator to perform a "join", which means collecting the results of
     multiple parallel predecessor steps into a single step. The outputs of the
-    predecessor steps should be received as a list. The orden of the elements
+    predecessor steps should be received as a list. The order of the elements
     in the list is the same as the order of the predecessor steps. Unpack the
     list to obtain the results and perform processing on them as needed. When
     using this decorator, use parentheses without any parameters.
