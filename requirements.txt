@@ -1,0 +1,5 @@
+ruff>=0.11.6
+nextmv>=0.22.0
+requests>=2.31.0
+dataclasses-json>=0.6.7
+ipython>=9.1.0
