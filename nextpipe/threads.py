@@ -1,6 +1,7 @@
 import multiprocessing
 import threading
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 thread_local = threading.local()
 

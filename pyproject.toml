@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.31.0",
-    "nextmv>=0.20.1",
+    "nextmv>=0.22.0",
     "dataclasses-json>=0.6.7",
 ]
 description = "Framework for Decision Pipeline modeling and execution"
@@ -70,6 +70,6 @@ path = "nextpipe/__about__.py"
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.6.4",
+    "ruff>=0.11.6",
     "goldie>=0.1.7",
 ]
