@@ -368,7 +368,6 @@ class Runner:
             polling_options.initial_delay = delay
             if polling_options.stop is None:
                 polling_options.stop = lambda: node.cancel
-            polling_options.verbose = True
 
             run_args = (
                 [],  # No nameless arguments

@@ -78,10 +78,19 @@ def step(function):
 
     Example
     -------
+    A simple example shows that a step is executed.
     ```
-    @step
-    def my_step():
-        pass
+    from nextpipe import FlowSpec, log, step
+
+
+    class Flow(FlowSpec):
+        @step
+        def my_step() -> None:
+            log("Some code is executed here")
+
+
+    flow = Flow("DecisionFlow", None)
+    flow.run()
     ```
     """
 
@@ -122,10 +131,26 @@ def needs(predecessors: list[Callable]):
     In this example steps `step1` and `step2` are executed before `step3`.
 
     ```
-    @needs(predecessors=[step1, step2])
-    @step
-    def step3():
-        pass
+    from nextpipe import FlowSpec, log, needs, step
+
+
+    class Flow(FlowSpec):
+        @step
+        def step1() -> None:
+            log("Execute step 1")
+
+        @step
+        def step2() -> None:
+            log("Execute step 2")
+
+        @needs(predecessors=[step1, step2])
+        @step
+        def step3() -> None:
+            log("Execute step 3 after steps 1 and 2")
+
+
+    flow = Flow("DecisionFlow", None)
+    flow.run()
     ```
     """
 
@@ -162,16 +187,22 @@ def optional(condition: Callable[[Step], bool]):
 
     Example
     -------
-    In this example the step `step1` is executed only if the condition
-    `condition` is `True`. The condition is a callable that takes the
-    step as an argument and returns a boolean indicating whether the
-    step should be executed or not.
+    In this example the step `step1` is executed given that the condition is
+    true.
 
     ```
-    @optional(condition=lambda step: step.get_id() == "step1")
-    @step
-    def step1():
-        pass
+    from nextpipe import FlowSpec, log, optional, step
+
+
+    class Flow(FlowSpec):
+        @optional(condition=lambda step: step.get_id() == "step1")
+        @step
+        def step1() -> None:
+            log("Execute optional step 1")
+
+
+    flow = Flow("DecisionFlow", None)
+    flow.run()
     ```
     """
 
@@ -205,10 +236,18 @@ def repeat(repetitions: int):
     In this example the step `step1` is repeated 3 times.
 
     ```
-    @repeat(repetitions=3)
-    @step
-    def step1():
-        pass
+    from nextpipe import FlowSpec, log, repeat, step
+
+
+    class Flow(FlowSpec):
+        @repeat(repetitions=3)
+        @step
+        def step1() -> None:
+            log("Hello, world.")
+
+
+    flow = Flow("DecisionFlow", None)
+    flow.run()
     ```
     """
 
@@ -244,11 +283,24 @@ def foreach(f: Callable = None):
     In this example the step `step2` is executed for each element in the list
     returned by `step1`. The input to `step2` is the element of the list.
 
-    ``` @foreach() @step def step1():
-        return [{"input": 1}, {"input": 2}, {"input": 3}]
+    ```
+    from nextpipe import FlowSpec, foreach, log, needs, step
 
-    @step def step2(data: dict):
-        pass
+
+    class Flow(FlowSpec):
+        @foreach()
+        @step
+        def step1() -> list[dict[str, any]]:
+            return [{"input": 1}, {"input": 2}, {"input": 3}]
+
+        @needs(predecessors=[step1])
+        @step
+        def step2(data: dict) -> None:
+            log(data)
+
+
+    flow = Flow("DecisionFlow", None)
+    flow.run()
     ```
     """
 
@@ -287,16 +339,27 @@ def join(f: Callable = None):
     `step2`.
 
     ```
-    @join()
-    @step
-    def step1():
-        return {"input": 1}
-    @step
-    def step2():
-        return {"input": 2}
-    @step
-    def step3(data: list[dict]):
-        pass
+    from nextpipe import FlowSpec, join, log, needs, step
+
+
+    class Flow(FlowSpec):
+        @step
+        def step1() -> dict[str, any]:
+            return {"input": 1}
+
+        @step
+        def step2() -> dict[str, any]:
+            return {"input": 2}
+
+        @join()
+        @needs(predecessors=[step1, step2])
+        @step
+        def step3(data: list[dict[str, any]]) -> None:
+            log(data)
+
+
+    flow = Flow("DecisionFlow", None)
+    flow.run()
     ```
     """
 
@@ -374,18 +437,38 @@ def app(
 
     Example
     -------
-    In this example the step `step1` is executed and the result is passed
-    to the application with ID `echo`.
+    In this example the step `pre_process` is executed first. After
+    pre-processing is completed, the result is passed to the `solve` step. This
+    step runs a Nextmv Application with the ID `echo`. The result of the
+    application run is passed to the final step `post_process`, which
+    post-processes the result.
     ```
-    @step
-    def prepare(input: dict):
-        return input
+    from nextpipe import FlowSpec, app, log, needs, step
 
-    @app(app_id="echo")
-    @needs(predecessors=[prepare])
-    @step
-    def solve():
-        pass
+
+    class Flow(FlowSpec):
+        @step
+        def pre_process(input: dict[str, any]) -> dict[str, any]:
+            log("You can pre-process your data here.")
+            return input
+
+        @app(app_id="echo")
+        @needs(predecessors=[pre_process])
+        @step
+        def solve():
+            pass
+
+        @needs(predecessors=[solve])
+        @step
+        def post_process(result: dict[str, any]) -> dict[str, any]:
+            log("You can post-process your data here.")
+            return result
+
+
+    data = {"foo": "bar"}
+    flow = Flow("DecisionFlow", data)
+    flow.run()
+    log(flow.get_result(flow.post_process))
     ```
     """
 
