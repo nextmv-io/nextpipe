@@ -36,7 +36,7 @@ def main():
     flow.run()
 
     # Write out the result
-    nextmv.write_local(flow.get_result(flow.enhance))
+    nextmv.write(flow.get_result(flow.enhance))
 
 
 if __name__ == "__main__":

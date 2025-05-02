@@ -76,7 +76,7 @@ def main():
     # Run workflow
     flow = Flow("DecisionFlow", input.data)
     flow.run()
-    nextmv.write_local(flow.get_result(flow.pick_best))
+    nextmv.write(flow.get_result(flow.pick_best))
 
 
 if __name__ == "__main__":

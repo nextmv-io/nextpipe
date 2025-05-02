@@ -14,4 +14,4 @@ output = nextmv.Output(
     },
     statistics={"run": {"duration": time.time() - before}},
 )
-nextmv.write_local(output)
+nextmv.write(output)
