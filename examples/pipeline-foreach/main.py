@@ -56,7 +56,7 @@ def main():
     flow.run()
 
     # Write out the result
-    nextmv.write_local(flow.get_result(flow.merge))
+    nextmv.write(flow.get_result(flow.merge))
 
 
 if __name__ == "__main__":
