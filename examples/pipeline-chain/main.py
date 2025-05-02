@@ -1,5 +1,3 @@
-import json
-
 import nextmv
 
 from nextpipe import FlowSpec, app, needs, step
@@ -38,7 +36,7 @@ def main():
     flow.run()
 
     # Write out the result
-    print(json.dumps(flow.get_result(flow.enhance)))
+    nextmv.write_local(flow.get_result(flow.enhance))
 
 
 if __name__ == "__main__":
