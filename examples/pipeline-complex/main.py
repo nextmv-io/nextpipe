@@ -1,5 +1,4 @@
 import copy
-import json
 
 import nextmv
 
@@ -77,8 +76,7 @@ def main():
     # Run workflow
     flow = Flow("DecisionFlow", input.data)
     flow.run()
-    result = flow.get_result(flow.pick_best)
-    print(json.dumps(result))
+    nextmv.write_local(flow.get_result(flow.pick_best))
 
 
 if __name__ == "__main__":

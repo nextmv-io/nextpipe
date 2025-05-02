@@ -22,38 +22,36 @@ class Flow(FlowSpec):
     def convert(input_csv: str):
         reader = csv.reader(input_csv.splitlines())
         next(reader)  # skip header
-        return json.dumps(
-            {
-                "vehicles": [
-                    {
-                        "id": f"vehicle-{i}",
-                        "start_location": {"lon": 7.62558, "lat": 51.96223},
-                        "end_location": {"lon": 7.62558, "lat": 51.96223},
-                        "start_time": "2024-09-04T11:00:00+00:00",
-                        "speed": 10,
-                        "capacity": 27,
-                    }
-                    for i in range(20)
-                ],
-                "stops": [
-                    {
-                        "id": row[0],
-                        "location": {"lon": float(row[1]), "lat": float(row[2])},
-                        "quantity": -1,
-                        "unplanned_penalty": 2000000000,
-                    }
-                    for row in reader
-                ],
-            }
-        )
+        return {
+            "vehicles": [
+                {
+                    "id": f"vehicle-{i}",
+                    "start_location": {"lon": 7.62558, "lat": 51.96223},
+                    "end_location": {"lon": 7.62558, "lat": 51.96223},
+                    "start_time": "2024-09-04T11:00:00+00:00",
+                    "speed": 10,
+                    "capacity": 27,
+                }
+                for i in range(20)
+            ],
+            "stops": [
+                {
+                    "id": row[0],
+                    "location": {"lon": float(row[1]), "lat": float(row[2])},
+                    "quantity": -1,
+                    "unplanned_penalty": 2000000000,
+                }
+                for row in reader
+            ],
+        }
 
     @needs(predecessors=[convert])
     @step
     def align(input: dict):
-        clone = json.loads(input)
+        clone = json.loads(json.dumps(input))
         for stop in [s for s in clone["stops"] if "quantity" in s]:
             stop["quantity"] *= -1
-        return json.dumps(clone)
+        return clone
 
     # >>> Solve the problem using different solvers
     @app(
@@ -104,7 +102,7 @@ def main():
     flow.run()
 
     # Write out the result
-    print(json.dumps(flow.get_result(flow.pick_best)))
+    nextmv.write_local(flow.get_result(flow.pick_best))
 
 
 if __name__ == "__main__":
