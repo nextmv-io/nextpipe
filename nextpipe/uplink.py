@@ -17,9 +17,6 @@ ENV_APP_ID = "NEXTMV_APP_ID"
 ENV_RUN_ID = "NEXTMV_RUN_ID"
 
 
-# TODO REMOVE INTERNAL LOG STATEMENTS BEFORE MERGING!
-
-
 def ExcludeIfNone(value):
     return value is None
 

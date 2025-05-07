@@ -57,7 +57,7 @@ class Pool:
 
         def worker(job: Job, thread_id: int):
             try:
-                if job.start_callback:
+                if job.start_callback is not None:
                     job.start_callback(job)
                 job.run()
             except Exception as e:
@@ -67,7 +67,7 @@ class Pool:
                 with self.lock:
                     self.running.pop(thread_id, None)
                     self.cond.notify_all()  # Notify others that a thread is available
-                if job.done_callback:
+                if job.done_callback is not None:
                     job.done_callback(job)
 
         while True:
