@@ -1,1 +1,1 @@
-nextpipe==0.2.0
+nextpipe==0.2.1
