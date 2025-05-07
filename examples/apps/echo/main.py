@@ -4,7 +4,7 @@ import time
 import nextmv
 
 before = time.time()
-input = nextmv.load_local()
+input = nextmv.load()
 output = nextmv.Output(
     solution={
         "echo": {

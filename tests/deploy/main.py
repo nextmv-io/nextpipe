@@ -36,7 +36,7 @@ def main():
         os.environ["NEXTMV_API_KEY"] = json.load(f)["nextmv_api_key"]
 
     # Load input data
-    input = nextmv.load_local()
+    input = nextmv.load()
 
     # Run workflow
     flow = Flow("DecisionFlow", input.data)
