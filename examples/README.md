@@ -7,7 +7,8 @@ This directory contains examples of how to use `nextpipe`.
 - Create and push all necessary apps in your account (check the README of the example and look for `@app` in the pipeline definition).
   - Some simple apps are available in the `./apps` directory. Push them as described in their READMEs.
   - Some examples make use of marketplace apps. Follow instructions in the example READMEs to subscribe to them.
-    - Alternative, you can use the `nextmv community clone -a <app-id>` command to clone the app from the community apps repository.
+    - Alternatively, you can use the `nextmv community clone -a <app-id>` command to clone the app from the community apps repository.
+      Make sure to use the `app_id` and `instance_id` as configured in the example.
 
 ## Table of contents
 
