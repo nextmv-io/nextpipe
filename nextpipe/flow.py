@@ -314,7 +314,16 @@ class Runner:
             )
         return inputs
 
-    def __node_callback(self, job: threads.Job):
+    def __node_start_callback(self, job: threads.Job):
+        """
+        Callback function for a job. This function is called by the pool manager when a job is started.
+        """
+        reference: FlowNode = job.reference
+        reference.status = STATUS_RUNNING
+        # Inform the platform about the node update
+        self.uplink.submit_update(self.graph._to_uplink_dto())
+
+    def __node_done_callback(self, job: threads.Job):
         """
         Callback function for a job. This function is called by the pool manager when a job is done.
         """
@@ -412,7 +421,8 @@ class Runner:
         # Create the job
         return threads.Job(
             target=self.__run_step,
-            callback=self.__node_callback,
+            start_callback=self.__node_start_callback,
+            done_callback=self.__node_done_callback,
             args=(node, inputs, self.spec.client),
             name=utils.THREAD_NAME_PREFIX + node.id,
             reference=node,

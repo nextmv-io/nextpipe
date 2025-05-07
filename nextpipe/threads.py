@@ -10,13 +10,15 @@ class Job:
     def __init__(
         self,
         target: Callable,
-        callback: Callable,
+        start_callback: Callable,
+        done_callback: Callable,
         args: Optional[list] = None,
         name: str = None,
         reference: any = None,
     ):
         self.target = target
-        self.callback = callback
+        self.start_callback = start_callback
+        self.done_callback = done_callback
         self.args = args
         self.name = name
         self.reference = reference
@@ -55,6 +57,8 @@ class Pool:
 
         def worker(job: Job, thread_id: int):
             try:
+                if job.start_callback:
+                    job.start_callback(job)
                 job.run()
             except Exception as e:
                 job.error = e
@@ -63,8 +67,8 @@ class Pool:
                 with self.lock:
                     self.running.pop(thread_id, None)
                     self.cond.notify_all()  # Notify others that a thread is available
-                if job.callback:
-                    job.callback(job)
+                if job.done_callback:
+                    job.done_callback(job)
 
         while True:
             with self.lock:

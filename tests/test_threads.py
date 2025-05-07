@@ -18,7 +18,7 @@ class TestLogger(unittest.TestCase):
 
         pool = Pool(2)
         for i in numbers:  # Submit 6 jobs
-            pool.run(Job(target, None, (i,)))
+            pool.run(Job(target, None, None, (i,)))
         pool.join()
 
         self.assertEqual(numbers_seen, numbers)
@@ -30,18 +30,24 @@ class TestLogger(unittest.TestCase):
             time.sleep(0.1)  # Simulate work
             raise ValueError("Something went wrong")
 
+        intercepted_start = False
         intercepted_exception = None
 
-        def callback(job: Job):
+        def start_callback(job: Job):
+            nonlocal intercepted_start
+            intercepted_start = True
+
+        def done_callback(job: Job):
             nonlocal intercepted_exception
             if job.error:
                 intercepted_exception = job.error
 
         pool = Pool(2)
         for i in range(1, 2):
-            pool.run(Job(target, callback, (i,)))
+            pool.run(Job(target, start_callback, done_callback, (i,)))
         pool.join()
 
+        self.assertTrue(intercepted_start)
         self.assertIsNotNone(intercepted_exception)
         self.assertIsInstance(intercepted_exception, ValueError)
         self.assertEqual(str(intercepted_exception), "Something went wrong")
