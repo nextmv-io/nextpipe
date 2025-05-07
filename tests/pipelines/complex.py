@@ -13,21 +13,21 @@ class Flow(FlowSpec):
         return input
 
     @repeat(repetitions=2)
-    @app(app_id="routing-nextroute")
+    @app(app_id="routing-nextroute", instance_id="latest")
     @needs(predecessors=[prepare])
     @step
     def run_nextroute():
         """Runs the model."""
         pass
 
-    @app(app_id="routing-ortools")
+    @app(app_id="routing-ortools", instance_id="latest")
     @needs(predecessors=[prepare])
     @step
     def run_ortools():
         """Runs the model."""
         pass
 
-    @app(app_id="routing-pyvroom")
+    @app(app_id="routing-pyvroom", instance_id="latest")
     @needs(predecessors=[prepare])
     @step
     def run_pyvroom():
@@ -59,7 +59,7 @@ class Flow(FlowSpec):
 
 def main():
     # Load input data
-    input = nextmv.load_local()
+    input = nextmv.load()
 
     # Run workflow
     flow = Flow("DecisionFlow", input.data)

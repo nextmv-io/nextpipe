@@ -37,7 +37,7 @@ class Flow(FlowSpec):
 
 def main():
     # Load input data
-    input = nextmv.load_local()
+    input = nextmv.load()
 
     # Run workflow
     flow = Flow("DecisionFlow", input.data)

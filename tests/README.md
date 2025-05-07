@@ -4,7 +4,7 @@ This folder contains tests for the project. Since pipeline apps typically utiliz
 
 ## Setup apps
 
-Setup the apps as follows:
+Setup the custom apps as follows:
 
 ```bash
 # Setup echo app
@@ -12,28 +12,13 @@ cd apps/echo
 nextmv app create -a echo -n "Echo" || true
 nextmv app push -a echo
 cd ../..
-
-# Setup nextroute
-nextmv community clone -a go-nextroute
-cd go-nextroute
-nextmv app create -a routing-nextroute -n "Routing Nextroute" || true
-nextmv app push -a routing-nextroute
-cd ..
-
-# Setup pyvroom
-nextmv community clone -a python-pyvroom-routing
-cd python-pyvroom-routing
-nextmv app create -a routing-pyvroom -n "Routing Pyvroom" || true
-nextmv app push -a routing-pyvroom
-cd ..
-
-# Setup ortools
-nextmv community clone -a python-ortools-routing
-cd python-ortools-routing
-nextmv app create -a routing-ortools -n "Routing Ortools" || true
-nextmv app push -a routing-ortools
-cd ..
 ```
+
+Furthermore, subscribe to the following marketplace apps and name them as follows:
+
+* _Nextmv Routing_: `routing-nextroute`
+* _OR-Tools Routing_: `routing-ortools`
+* _PyVroom Routing_: `routing-pyvroom`
 
 ## Testing
 
