@@ -363,10 +363,12 @@ class Runner:
                 app_run_config: schema.AppRunConfig = inputs[0]
                 input = app_run_config.input
                 options = {option.name: option.value for option in app_run_config.options}
+                name = app_run_config.name if app_run_config.name else node.id
             else:
                 # If the input is not AppRunConfig, we use it directly.
                 input = inputs[0]
                 options = app_step.parameters
+                name = node.id
 
             # Modify the polling options set for the step (by default or by the
             # user) so that the initial delay is randomized and the stopping
@@ -384,6 +386,7 @@ class Runner:
                     "input": input,
                     "run_options": options,
                     "polling_options": polling_options,
+                    "name": name,
                 },
             )
 
