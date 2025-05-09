@@ -23,5 +23,5 @@ class AppRunConfig:
     """Input for the app."""
     options: list[AppOption] = field(default_factory=list)
     """Options for running the app."""
-    name: str = None
+    name: Optional[str] = None
     """Name for the run."""
