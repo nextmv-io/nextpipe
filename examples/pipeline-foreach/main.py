@@ -15,7 +15,14 @@ class Flow(FlowSpec):
         Creates 3 copies of the input and configures them for 3 different app parameters.
         """
         inputs = [copy.deepcopy(data) for _ in range(3)]
-        run_configs = [AppRunConfig(input, [AppOption("param", i)]) for i, input in enumerate(inputs)]
+        run_configs = [
+            AppRunConfig(
+                input=input,
+                options=[AppOption("param", i)],
+                name=f"run-{i}",
+            )
+            for i, input in enumerate(inputs)
+        ]
         return run_configs
 
     @step
