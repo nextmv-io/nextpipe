@@ -1,4 +1,5 @@
-"""Graph utility functions for cycle detection in directed graphs.
+"""
+Graph utility functions for cycle detection in directed graphs.
 
 This module provides utilities for working with graph structures, particularly
 for detecting cycles in directed acyclic graphs (DAGs).
@@ -47,6 +48,7 @@ def check_cycle(node_successors: dict[str, list[str]]) -> tuple[bool, list[str]]
     >>> check_cycle(has_cycle)
     (True, ['A', 'B', 'C'])
     """
+
     # Step 1: Calculate in-degree (number of incoming edges) for each node
     in_degree = dict.fromkeys(node_successors.keys(), 0)
 

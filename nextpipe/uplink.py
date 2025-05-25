@@ -1,4 +1,5 @@
-"""Module for communicating with the Nextmv platform.
+"""
+Module for communicating with the Nextmv platform.
 
 This module provides functionality to communicate pipeline execution status with the
 Nextmv platform. It includes data classes for modeling the pipeline graph state and
@@ -76,6 +77,7 @@ def ExcludeIfNone(value):
     >>> ExcludeIfNone("something")
     False
     """
+
     return value is None
 
 
@@ -273,6 +275,7 @@ class UplinkClient:
         If no application ID or run ID is provided, the client will be marked as
         inactive and will not send any updates to the platform.
         """
+
         if config is None:
             # Load config from environment
             config = UplinkConfig(
@@ -305,6 +308,7 @@ class UplinkClient:
         Exception
             If the request to post the flow update fails.
         """
+
         # Get RFC3339 timestamp in UTC
         timestamp = datetime.datetime.now(datetime.UTC).isoformat()
         self.flow.updated_at = timestamp
@@ -333,6 +337,7 @@ class UplinkClient:
         ValueError
             If the flow is not a FlowUpdateDTO instance.
         """
+
         if self.inactive or self._terminate:
             return
         if not isinstance(flow, FlowUpdateDTO):
@@ -357,6 +362,7 @@ class UplinkClient:
         If the client is inactive or already terminated, this method returns
         without starting a new thread.
         """
+
         if self.inactive or self._terminate:
             return
 
@@ -395,6 +401,7 @@ class UplinkClient:
 
         If the client is inactive, this method returns without taking any action.
         """
+
         if self.inactive:
             return
 

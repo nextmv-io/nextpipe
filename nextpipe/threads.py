@@ -1,4 +1,5 @@
-"""Thread management utilities for parallel job execution.
+"""
+Thread management utilities for parallel job execution.
 
 This module provides classes for managing multithreaded job execution.
 
@@ -116,6 +117,7 @@ class Job:
         any
             The result of the target function execution.
         """
+
         if self.args:
             self.result = self.target(*self.args)
         else:
@@ -181,6 +183,7 @@ class Pool:
             Maximum number of threads to use, by default 0.
             If <= 0, uses the number of CPU cores.
         """
+
         if max_threads <= 0:
             max_threads = multiprocessing.cpu_count()
         self.max_threads = max_threads
@@ -208,6 +211,7 @@ class Pool:
         Jobs are executed in the order they are submitted, but the completion
         order may vary depending on execution time.
         """
+
         with self.lock:
             self.counter += 1
             thread_id = self.counter
@@ -244,17 +248,20 @@ class Pool:
                     self.cond.wait()  # Wait until a thread is available
 
     def wait_one(self) -> None:
-        """Wait for one job to finish.
+        """
+        Wait for one job to finish.
 
         This method blocks until at least one job completes execution.
         It's useful when you want to process completed jobs as they finish
         without waiting for all jobs to complete.
         """
+
         with self.lock:
             self.cond.wait()
 
     def join(self) -> None:
-        """Wait for all jobs to finish.
+        """
+        Wait for all jobs to finish.
 
         This method blocks until all submitted jobs have completed execution.
         It's useful to ensure all parallelized work is completed before proceeding.
@@ -270,3 +277,7 @@ class Pool:
         >>> pool.join()
         >>> print("All jobs completed")
         """
+
+        with self.cond:
+            while self.waiting or self.running:
+                self.cond.wait()  # Wait until all jobs are finished

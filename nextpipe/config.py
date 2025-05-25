@@ -1,4 +1,5 @@
-"""Configuration module for the pipeline.
+"""
+Configuration module for the pipeline.
 
 This module provides configuration classes for controlling pipeline behavior.
 
@@ -16,7 +17,8 @@ from dataclasses_json import dataclass_json
 @dataclass_json
 @dataclass
 class Configuration:
-    """Configuration for the pipeline.
+    """
+    Configuration for the pipeline.
 
     This class encapsulates configuration parameters that control how the
     pipeline executes, including parallelization and input limitations.

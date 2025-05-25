@@ -107,6 +107,7 @@ class FlowStep:
         docstring : str
             The docstring of the step function.
         """
+
         self.step_function = step_function
         self.definition = step_definition
         self.docstring = docstring
@@ -125,6 +126,7 @@ class FlowStep:
         str
             String representation showing the step function name.
         """
+
         return f"FlowStep({self.step_function.name})"
 
 
@@ -178,6 +180,7 @@ class FlowNode:
         index : int
             The index of this node within the parent step.
         """
+
         self.parent = parent
         self.index = index
         self.id = f"{parent.definition.get_id()}_{index}"
@@ -198,6 +201,7 @@ class FlowNode:
         str
             String representation showing the node's id.
         """
+
         return f"FlowNode({self.id})"
 
 
@@ -290,6 +294,7 @@ class FlowSpec:
         uplink_config : Optional[uplink.UplinkConfig], optional
             Configuration for uplink, by default None.
         """
+
         self.name = name
         self.config = config.Configuration() if conf is None else conf
         self.client = Client() if client is None else client
@@ -314,6 +319,7 @@ class FlowSpec:
         This method starts the flow execution and blocks until it completes
         or fails with an exception.
         """
+
         self.runner.run()
 
     def __repr__(self):
@@ -325,6 +331,7 @@ class FlowSpec:
         str
             String representation showing the flow name.
         """
+
         return f"Flow({self.name})"
 
     def get_result(self, step: callable) -> Union[object, None]:
@@ -375,6 +382,7 @@ class FlowSpec:
         list[object]
             List of input objects for the step.
         """
+
         return (
             [self.get_result(predecessor) for predecessor in step.definition.needs.predecessors]
             if step.definition.is_needs()
@@ -445,6 +453,7 @@ class FlowGraph:
         FlowStep
             The FlowStep matching the given definition.
         """
+
         return self.steps_by_definition[definition]
 
     def __create_graph(self, flow_spec: FlowSpec):
@@ -466,6 +475,7 @@ class FlowGraph:
             If constraints are violated (e.g., app steps with multiple predecessors)
             or if a cycle is detected in the graph.
         """
+
         root = utils.get_ast_root(flow_spec)
 
         # Build the graph
@@ -522,6 +532,7 @@ class FlowGraph:
         str
             The arrow style string for the Mermaid diagram.
         """
+
         if step.definition.is_foreach() and not successor.definition.is_join():
             return "-- foreach -->"
         if not step.definition.is_foreach() and successor.definition.is_join():
@@ -537,6 +548,7 @@ class FlowGraph:
         str
             The Mermaid diagram as a string.
         """
+
         out = io.StringIO()
         out.write("graph LR\n")
         for step in self.steps:
@@ -568,6 +580,7 @@ class FlowGraph:
         uplink.FlowUpdateDTO
             Data transfer object for the flow graph.
         """
+
         return uplink.FlowUpdateDTO(
             pipeline_graph=uplink.FlowDTO(
                 steps=[
@@ -600,6 +613,7 @@ class FlowGraph:
         This method logs internal information about the flow graph,
         including flow name, version information, and step details.
         """
+
         utils.log_internal(f"Flow: {self.flow_spec.__class__.__name__}")
         utils.log_internal(f"nextpipe: {__version__}")
         utils.log_internal(f"nextmv: {version('nextmv')}")
@@ -643,6 +657,7 @@ class StepVisitor(ast.NodeVisitor):
         flow_class : type
             The flow class to visit.
         """
+
         self.steps = steps
         self.flow_class = flow_class
         super().__init__()
@@ -658,6 +673,7 @@ class StepVisitor(ast.NodeVisitor):
         step_function : ast.FunctionDef
             The function definition node.
         """
+
         func = getattr(self.flow_class, step_function.name)
         if hasattr(func, "is_step"):
             self.steps.append(FlowStep(step_function, func.step, func.__doc__))
@@ -729,6 +745,7 @@ class Runner:
         uplink : uplink.UplinkClient
             Client for communicating with the Nextmv platform.
         """
+
         self.spec = spec
         self.graph = graph
         self.uplink = uplink
@@ -768,6 +785,7 @@ class Runner:
         Exception
             If there are too many inputs for the step.
         """
+
         # If the step has no predecessors, the input is the flow input.
         if not step.predecessors:
             inputs = [self.spec.input]
@@ -819,6 +837,7 @@ class Runner:
         job : threads.Job
             The job that was started.
         """
+
         reference: FlowNode = job.reference
         reference.status = STATUS_RUNNING
         # Inform the platform about the node update
@@ -837,6 +856,7 @@ class Runner:
         job : threads.Job
             The job that was completed.
         """
+
         reference: FlowNode = job.reference
         reference.status = STATUS_SUCCEEDED if job.error is None else STATUS_FAILED
         reference.result = job.result
@@ -881,6 +901,7 @@ class Runner:
         Exception
             If an app step has more than one predecessor.
         """
+
         utils.log_internal(f"Running node {node.id}")
 
         # Run the step
@@ -969,6 +990,7 @@ class Runner:
         threads.Job
             Job for executing the step.
         """
+
         # Convert input to list, if it is not already a list
         inputs = inputs if isinstance(inputs, list) else [inputs]
         # Create the job
@@ -993,6 +1015,7 @@ class Runner:
         RuntimeError
             If the flow execution fails.
         """
+
         # Start communicating updates to the platform
         try:
             self.uplink.submit_update(self.graph._to_uplink_dto())

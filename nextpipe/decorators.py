@@ -52,7 +52,7 @@ from functools import wraps
 
 from nextmv import cloud
 
-from nextpipe import utils
+from . import utils
 
 
 class InputType(Enum):
@@ -126,6 +126,7 @@ class Step:
         function : callable
             The function that has been decorated as a step.
         """
+
         self.function = function
         self.type = StepType.DEFAULT
         self.run_ids = []
@@ -141,6 +142,7 @@ class Step:
         str
             A string representation of the step.
         """
+
         b = f"Step({self.function.__name__}"
         if hasattr(self, "needs"):
             b += f", {self.needs}"
@@ -159,6 +161,7 @@ class Step:
         str
             The name of the function that has been decorated as a step.
         """
+
         return self.function.__name__
 
     def is_needs(self):
@@ -170,6 +173,7 @@ class Step:
         bool
             True if the step has predecessors, False otherwise.
         """
+
         return hasattr(self, "needs")
 
     def skip(self):
@@ -181,6 +185,7 @@ class Step:
         bool
             True if the step should be skipped, False otherwise.
         """
+
         return hasattr(self, "optional") and not self.optional.condition(self)
 
     def is_repeat(self):
@@ -192,6 +197,7 @@ class Step:
         bool
             True if the step should be repeated, False otherwise.
         """
+
         return hasattr(self, "repeat")
 
     def get_repetitions(self):
@@ -204,6 +210,7 @@ class Step:
             The number of times the step should be repeated, or 1 if the
             step should not be repeated.
         """
+
         return self.repeat.repetitions if self.is_repeat() else 1
 
     def is_app(self):
@@ -215,6 +222,7 @@ class Step:
         bool
             True if the step is a Nextmv Application step, False otherwise.
         """
+
         return self.type == StepType.APP
 
     def get_app_id(self):
@@ -227,6 +235,7 @@ class Step:
             The ID of the Nextmv Application, or None if the step is not a
             Nextmv Application step.
         """
+
         return self.app.app_id if self.is_app() else None
 
     def set_run_ids(self, run_ids: list[str]):
@@ -238,6 +247,7 @@ class Step:
         run_ids : list[str]
             The run IDs to set.
         """
+
         self.run_ids = run_ids
 
     def get_run_ids(self):
@@ -249,6 +259,7 @@ class Step:
         list[str]
             The run IDs for this step.
         """
+
         return self.run_ids
 
     def is_foreach(self):
@@ -260,6 +271,7 @@ class Step:
         bool
             True if the step is a foreach step, False otherwise.
         """
+
         return hasattr(self, "foreach")
 
     def is_join(self):
@@ -271,6 +283,7 @@ class Step:
         bool
             True if the step is a join step, False otherwise.
         """
+
         return hasattr(self, "join")
 
 
@@ -339,6 +352,7 @@ class Needs:
         predecessors : list[Callable]
             The steps that must be executed before the decorated step.
         """
+
         self.predecessors = predecessors
 
     def __repr__(self):
@@ -350,6 +364,7 @@ class Needs:
         str
             A string representation of the needs.
         """
+
         return f"StepNeeds({','.join([p.step.get_id() for p in self.predecessors])})"
 
 
@@ -431,6 +446,7 @@ class Optional:
             A function that takes a step and returns a boolean indicating
             whether the step should be executed or not.
         """
+
         self.condition = condition
 
     def __repr__(self):
@@ -442,6 +458,7 @@ class Optional:
         str
             A string representation of the optional condition.
         """
+
         return f"StepOnlyIf({self.condition})"
 
 
@@ -518,6 +535,7 @@ class Repeat:
         repetitions : int
             The number of times to repeat the step.
         """
+
         self.repetitions = repetitions
 
     def __repr__(self):
@@ -529,6 +547,7 @@ class Repeat:
         str
             A string representation of the repeat.
         """
+
         return f"StepRepeat({self.repetitions})"
 
 
@@ -596,6 +615,7 @@ class Foreach:
         str
             A string representation of the foreach operation.
         """
+
         return "StepForeach()"
 
 
@@ -668,6 +688,7 @@ class Join:
         str
             A string representation of the join operation.
         """
+
         return "StepJoin()"
 
 
@@ -767,7 +788,8 @@ class App:
         full_result: bool = False,
         polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
     ):
-        """Initialize an App object.
+        """
+        Initialize an App object.
 
         Parameters
         ----------
@@ -784,6 +806,7 @@ class App:
         polling_options : Optional[cloud.PollingOptions], optional
             Options for polling for the results of the app run, by default _DEFAULT_POLLING_OPTIONS.
         """
+
         self.app_id = app_id
         self.instance_id = instance_id
         self.parameters = parameters if parameters else {}
@@ -799,6 +822,7 @@ class App:
         str
             A string representation of the app.
         """
+
         return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type}, {self.full_result})"
 
 

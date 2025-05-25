@@ -1,4 +1,5 @@
-"""Schema definitions for NextPipe.
+"""
+Schema definitions for Nextpipe.
 
 This module contains schema definitions used for pipeline configurations.
 
@@ -19,7 +20,8 @@ from dataclasses_json import dataclass_json
 @dataclass_json
 @dataclass
 class AppOption:
-    """Option for running an app.
+    """
+    Option for running an app.
 
     You can import the `AppOption` class directly from `nextpipe`:
 
@@ -52,7 +54,8 @@ class AppOption:
 @dataclass_json
 @dataclass
 class AppRunConfig:
-    """Configuration for running an app.
+    """
+    Configuration for running an app.
 
     You can import the `AppRunConfig` class directly from `nextpipe`:
 

@@ -1,4 +1,5 @@
-"""Utility functions for nextpipe.
+"""
+Utility functions for nextpipe.
 
 This module provides utility functions used throughout the nextpipe framework
 for logging, function wrapping, and AST parsing.
@@ -38,6 +39,7 @@ def __get_step_name() -> str:
         The name of the current step if called from a nextpipe thread,
         or 'main' if called from the main thread.
     """
+
     if threading.current_thread().name.startswith(THREAD_NAME_PREFIX):
         return threading.current_thread().name[len(THREAD_NAME_PREFIX) :]
     return "main"
@@ -68,6 +70,7 @@ def log(message: str) -> None:
     >>> # In a step function, it would show:
     >>> # [step_name] Processing data
     """
+
     step_name = __get_step_name()
     if step_name:
         print(f"[{step_name}] {message}", file=sys.stderr)
@@ -93,6 +96,7 @@ def log_internal(message: str) -> None:
     >>> log_internal("Pipeline initialized")
     [nextpipe] Pipeline initialized
     """
+
     print(f"[nextpipe] {message}", file=sys.stderr)
 
 
@@ -154,6 +158,7 @@ def convert_to_string_values(input_dict: dict[str, any]) -> dict[str, str]:
     >>> convert_to_string_values(d)
     {'a': '1', 'b': '2.0', 'c': 'True'}
     """
+
     return {key: str(value) for key, value in input_dict.items()}
 
 
@@ -169,6 +174,7 @@ def __is_running_in_notebook():
     bool
         True if running in a Jupyter notebook, False otherwise.
     """
+
     try:
         from IPython import get_ipython
 
@@ -205,6 +211,7 @@ def __get_notebook_ast_root(obj: object) -> ast.ClassDef:
     ValueError
         If the class definition cannot be found in the notebook history.
     """
+
     from IPython import get_ipython
 
     # Get the current IPython instance
@@ -245,6 +252,7 @@ def __get_normal_ast_root(obj: object) -> ast.ClassDef:
     IndexError
         If the class definition could not be found in the module.
     """
+
     module = importlib.import_module(obj.__class__.__module__)
     class_name = obj.__class__.__name__
     tree = ast.parse(inspect.getsource(module)).body
@@ -289,6 +297,7 @@ def get_ast_root(obj: object) -> ast.ClassDef:
     >>> root.name
     'Example'
     """
+
     if __is_running_in_notebook():
         return __get_notebook_ast_root(obj)
     else:
