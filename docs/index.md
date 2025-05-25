@@ -29,12 +29,11 @@ Nextpipe is a Python package that provides a framework for Decision Workflows
 modeling and execution. It provides first-class support for Workflows in the
 [Nextmv Platform][nextmv].
 
-> [!IMPORTANT]  
-> Please note that `nextpipe` is provided as _source-available_ software
-> (not _open-source_). For further information, please refer to the
-> [LICENSE](./LICENSE.md) file.
+!!! warning
 
-📖 To learn more about the `nextpipe`, visit the [docs][docs].
+    Please note that `nextpipe` is provided as _source-available_
+    software (not _open-source_). For further information, please refer to the
+    [LICENSE](https://github.com/nextmv-io/nextpipe/blob/develop/LICENSE.md) file.
 
 ## Installation
 
@@ -48,8 +47,7 @@ pip install nextpipe
 
 ## Preview
 
-Example of a pipeline utilizing multiple routing solvers, and picking the best
-result.
+Example of a pipeline utilizing multiple routing solvers, and picking the best result.
 
 ```mermaid
 graph LR
@@ -78,4 +76,3 @@ graph LR
 
 [nextpipe-pypi]: https://pypi.org/project/nextpipe/
 [nextmv]: https://nextmv.io
-[docs]: https://nextpipe.readthedocs.io/en/latest/

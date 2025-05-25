@@ -1,12 +1,90 @@
+"""Thread management utilities for parallel job execution.
+
+This module provides classes for managing multithreaded job execution.
+
+Classes
+-------
+Job
+    A callable job that can be submitted to a thread pool.
+Pool
+    A thread pool for executing jobs in parallel.
+
+The module also provides a thread local storage variable for thread-specific data.
+"""
+
 import multiprocessing
 import threading
 from collections.abc import Callable
 from typing import Optional
 
 thread_local = threading.local()
+"""Thread-local storage.
+
+This variable provides thread-specific storage that can be used to store data
+that is specific to a particular thread.
+"""
 
 
 class Job:
+    """A callable job that can be submitted to a thread pool.
+
+    This class represents a job that can be executed by a worker thread in a
+    thread pool. It wraps a target callable with arguments and callback functions
+    that are executed when the job starts and completes.
+
+    Parameters
+    ----------
+    target : Callable
+        The function to be executed by the job.
+    start_callback : Callable
+        Function to be called when the job starts. Takes the job as a parameter.
+    done_callback : Callable
+        Function to be called when the job completes. Takes the job as a parameter.
+    args : Optional[list], optional
+        Arguments to be passed to the target function, by default None.
+    name : str, optional
+        Name for the job, by default None.
+    reference : any, optional
+        Reference to any object associated with this job, by default None.
+
+    Attributes
+    ----------
+    target : Callable
+        The function to be executed by the job.
+    start_callback : Callable
+        Function to be called when the job starts.
+    done_callback : Callable
+        Function to be called when the job completes.
+    args : Optional[list]
+        Arguments to be passed to the target function.
+    name : str
+        Name for the job.
+    reference : any
+        Reference to any object associated with this job.
+    done : bool
+        Whether the job has completed.
+    result : any
+        The result of the job execution.
+    error : Exception
+        Any exception that occurred during job execution.
+
+    Examples
+    --------
+    >>> def my_task(x, y):
+    ...     return x + y
+    >>> def on_start(job):
+    ...     print(f"Starting job {job.name}")
+    >>> def on_done(job):
+    ...     print(f"Job {job.name} completed with result: {job.result}")
+    >>> job = Job(
+    ...     target=my_task,
+    ...     start_callback=on_start,
+    ...     done_callback=on_done,
+    ...     args=[5, 10],
+    ...     name="addition_job"
+    ... )
+    """
+
     def __init__(
         self,
         target: Callable,
@@ -27,6 +105,17 @@ class Job:
         self.error = None
 
     def run(self):
+        """Execute the job's target function.
+
+        Executes the target function with the provided arguments (if any)
+        and sets the done flag to True. The result of the execution is
+        stored in the result attribute.
+
+        Returns
+        -------
+        any
+            The result of the target function execution.
+        """
         if self.args:
             self.result = self.target(*self.args)
         else:
@@ -35,7 +124,63 @@ class Job:
 
 
 class Pool:
+    """A thread pool for executing jobs in parallel.
+
+    This class provides a thread pool for executing jobs in parallel. The number
+    of threads is limited by the max_threads parameter. Jobs are queued and
+    executed as threads become available.
+
+    Parameters
+    ----------
+    max_threads : int, optional
+        Maximum number of threads to use, by default 0 (uses CPU count).
+
+    Attributes
+    ----------
+    max_threads : int
+        Maximum number of threads in the pool.
+    counter : int
+        Counter used to assign unique IDs to threads.
+    waiting : dict
+        Dictionary of jobs waiting to be executed, keyed by thread ID.
+    running : dict
+        Dictionary of running thread objects, keyed by thread ID.
+    error : Exception
+        Any exception that occurred during job execution.
+    lock : threading.Lock
+        Lock for thread synchronization.
+    cond : threading.Condition
+        Condition variable for thread synchronization.
+
+    Examples
+    --------
+    >>> def task(x):
+    ...     return x * 2
+    >>> def on_start(job):
+    ...     print(f"Starting job")
+    >>> def on_done(job):
+    ...     print(f"Result: {job.result}")
+    >>> pool = Pool(max_threads=4)
+    >>> for i in range(10):
+    ...     job = Job(
+    ...         target=task,
+    ...         start_callback=on_start,
+    ...         done_callback=on_done,
+    ...         args=[i]
+    ...     )
+    ...     pool.run(job)
+    >>> pool.join()  # Wait for all jobs to finish
+    """
+
     def __init__(self, max_threads: int = 0):
+        """Initialize a thread pool.
+
+        Parameters
+        ----------
+        max_threads : int, optional
+            Maximum number of threads to use, by default 0.
+            If <= 0, uses the number of CPU cores.
+        """
         if max_threads <= 0:
             max_threads = multiprocessing.cpu_count()
         self.max_threads = max_threads
@@ -47,8 +192,21 @@ class Pool:
         self.cond = threading.Condition(self.lock)
 
     def run(self, job: Job) -> None:
-        """
-        The run method submits a job to the pool. The job is executed by a worker thread.
+        """Submit a job to the thread pool for execution.
+
+        The job is first placed in the waiting queue and then assigned to a worker
+        thread when one becomes available. If all threads are busy, the method will
+        wait until a thread becomes available.
+
+        Parameters
+        ----------
+        job : Job
+            The job to be executed.
+
+        Notes
+        -----
+        Jobs are executed in the order they are submitted, but the completion
+        order may vary depending on execution time.
         """
         with self.lock:
             self.counter += 1
@@ -86,16 +244,29 @@ class Pool:
                     self.cond.wait()  # Wait until a thread is available
 
     def wait_one(self) -> None:
-        """
-        Wait for one job to finish.
+        """Wait for one job to finish.
+
+        This method blocks until at least one job completes execution.
+        It's useful when you want to process completed jobs as they finish
+        without waiting for all jobs to complete.
         """
         with self.lock:
             self.cond.wait()
 
     def join(self) -> None:
+        """Wait for all jobs to finish.
+
+        This method blocks until all submitted jobs have completed execution.
+        It's useful to ensure all parallelized work is completed before proceeding.
+
+        Examples
+        --------
+        >>> pool = Pool(max_threads=4)
+        >>> # Submit jobs to the pool
+        >>> for i in range(10):
+        ...     job = Job(...)
+        ...     pool.run(job)
+        >>> # Wait for all jobs to complete
+        >>> pool.join()
+        >>> print("All jobs completed")
         """
-        Wait for all jobs to finish.
-        """
-        with self.cond:
-            while self.waiting or self.running:
-                self.cond.wait()  # Wait until all jobs are finished
