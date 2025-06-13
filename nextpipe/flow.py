@@ -918,12 +918,15 @@ class Runner:
                 # If the input is AppRunConfig, unwrap it.
                 app_run_config: schema.AppRunConfig = inputs[0]
                 input = app_run_config.input
-                options = {option.name: option.value for option in app_run_config.options}
                 name = app_run_config.name if app_run_config.name else node.id
+                app_run_options = {option.name: option.value for option in app_run_config.options}
+                # Merge the options from the app decorator with the options from the
+                # AppRunConfig. AppRunConfig options take precedence.
+                options = app_step.options | app_run_options
             else:
                 # If the input is not AppRunConfig, we use it directly.
                 input = inputs[0]
-                options = app_step.parameters
+                options = app_step.options
                 name = node.id
 
             # Modify the polling options set for the step (by default or by the
