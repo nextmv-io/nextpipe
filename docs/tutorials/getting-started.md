@@ -5,7 +5,7 @@ It allows you to define complex workflows with multiple steps, manage
 dependencies between these steps, and integrate with external applications and
 solvers.
 
-You can find example workflows among the [community apps][community-apps]. There
+You can find example workflows among the [community apps][community-apps]. Their
 name starts with `python-wf-*` (wf stands for workflow). These examples can be
 cloned using the [Nextmv CLI][cli] tool:
 
