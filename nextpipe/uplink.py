@@ -62,7 +62,7 @@ def ExcludeIfNone(value):
 
     Parameters
     ----------
-    value : any
+    value : Any
         The value to check.
 
     Returns

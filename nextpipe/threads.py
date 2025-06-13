@@ -16,7 +16,7 @@ The module also provides a thread local storage variable for thread-specific dat
 import multiprocessing
 import threading
 from collections.abc import Callable
-from typing import Optional
+from typing import Any, Optional
 
 thread_local = threading.local()
 """Thread-local storage.
@@ -45,7 +45,7 @@ class Job:
         Arguments to be passed to the target function, by default None.
     name : str, optional
         Name for the job, by default None.
-    reference : any, optional
+    reference : Any, optional
         Reference to any object associated with this job, by default None.
 
     Attributes
@@ -60,11 +60,11 @@ class Job:
         Arguments to be passed to the target function.
     name : str
         Name for the job.
-    reference : any
+    reference : Any
         Reference to any object associated with this job.
     done : bool
         Whether the job has completed.
-    result : any
+    result : Any
         The result of the job execution.
     error : Exception
         Any exception that occurred during job execution.
@@ -93,7 +93,7 @@ class Job:
         done_callback: Callable,
         args: Optional[list] = None,
         name: str = None,
-        reference: any = None,
+        reference: Any = None,
     ):
         self.target = target
         self.start_callback = start_callback
@@ -111,11 +111,6 @@ class Job:
         Executes the target function with the provided arguments (if any)
         and sets the done flag to True. The result of the execution is
         stored in the result attribute.
-
-        Returns
-        -------
-        any
-            The result of the target function execution.
         """
 
         if self.args:

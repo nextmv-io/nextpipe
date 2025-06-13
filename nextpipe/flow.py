@@ -188,7 +188,7 @@ class FlowNode:
         self.error: str = None
         self.predecessors: list[FlowNode] = []
         self.run_id: str = None
-        self.result: any = None
+        self.result: Any = None
         self.done: bool = False
         self.cancel: bool = False
 
@@ -932,7 +932,7 @@ class Runner:
             # Modify the polling options set for the step (by default or by the
             # user) so that the initial delay is randomized and the stopping
             # callback is configured as the node being cancelled if the user
-            # doesn’t want to override it.
+            # doesn't want to override it.
             polling_options = copy.deepcopy(app_step.polling_options)
             delay = random.uniform(0, 5)  # For lack of a better idea...
             polling_options.initial_delay = delay
