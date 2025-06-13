@@ -16,6 +16,8 @@ from typing import Any, Optional, Union
 
 from dataclasses_json import dataclass_json
 
+from . import utils
+
 
 @dataclass_json
 @dataclass
@@ -81,7 +83,7 @@ class AppRunConfig:
     >>> from nextpipe import AppRunConfig, AppOption
     >>> config = AppRunConfig(
     ...     input={"data": [1, 2, 3]},
-    ...     options=[AppOption(name="threads", value=4)],
+    ...     options={"threads": 4},
     ...     name="my-run"
     ... )
     """
@@ -105,6 +107,8 @@ class AppRunConfig:
         dict[str, Any]
             Dictionary of options.
         """
+        options = self.options
         if isinstance(self.options, list):
-            return {option.name: option.value for option in self.options}
-        return self.options
+            options = {option.name: option.value for option in self.options}
+        options = utils.convert_to_string_values(options)
+        return options
