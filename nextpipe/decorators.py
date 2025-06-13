@@ -114,7 +114,7 @@ class Step:
         The IDs of the runs associated with this step.
     _inputs : dict
         The inputs to the step.
-    _output : any
+    _output : Any
         The output of the step.
     """
 
@@ -298,7 +298,7 @@ def step(function):
     from nextpipe import step
     ```
 
-    This is the most basic decorator. This decorator doesn’t require any
+    This is the most basic decorator. This decorator doesn't require any
     parameters or the use of parentheses.
 
     Example
@@ -647,7 +647,7 @@ def foreach(f: Callable = None):
     class Flow(FlowSpec):
         @foreach()
         @step
-        def step1() -> list[dict[str, any]]:
+        def step1() -> list[dict[str, Any]]:
             return [{"input": 1}, {"input": 2}, {"input": 3}]
 
         @needs(predecessors=[step1])
@@ -722,17 +722,17 @@ def join(f: Callable = None):
 
     class Flow(FlowSpec):
         @step
-        def step1() -> dict[str, any]:
+        def step1() -> dict[str, Any]:
             return {"input": 1}
 
         @step
-        def step2() -> dict[str, any]:
+        def step2() -> dict[str, Any]:
             return {"input": 2}
 
         @join()
         @needs(predecessors=[step1, step2])
         @step
-        def step3(data: list[dict[str, any]]) -> None:
+        def step3(data: list[dict[str, Any]]) -> None:
             log(data)
 
 
@@ -770,7 +770,7 @@ class App:
         The ID of the Nextmv Application to run.
     instance_id : str
         The ID of the instance to run.
-    options : dict[str, any]
+    options : dict[str, Any]
         The options to pass to the application.
     input_type : InputType
         The type of input to pass to the application (JSON or FILES).
@@ -785,8 +785,8 @@ class App:
         app_id: str,
         instance_id: str = "devint",
         input_type: InputType = InputType.JSON,
-        parameters: dict[str, any] = None,
-        options: dict[str, any] = None,
+        parameters: dict[str, typing.Any] = None,
+        options: dict[str, typing.Any] = None,
         full_result: bool = False,
         polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
     ):
@@ -801,7 +801,7 @@ class App:
             The ID of the instance to run, by default "devint".
         input_type : InputType, optional
             The type of input to pass to the application, by default InputType.JSON.
-        options : dict[str, any], optional
+        options : dict[str, Any], optional
             The options to pass to the application, by default None.
         full_result : bool, optional
             Whether to return the full result including metadata, by default False.
@@ -841,8 +841,8 @@ class App:
 def app(
     app_id: str,
     instance_id: str = "devint",
-    parameters: dict[str, any] = None,
-    options: dict[str, any] = None,
+    parameters: dict[str, typing.Any] = None,
+    options: dict[str, typing.Any] = None,
     input_type: InputType = InputType.JSON,
     full_result: bool = False,
     polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
@@ -868,7 +868,7 @@ def app(
         The ID of the application to run.
     instance_id : str
         The ID of the instance to run. Default is "devint".
-    options : dict[str, any]
+    options : dict[str, Any]
         The options to pass to the application. This is a dictionary of
         parameter names and values. The values must be JSON serializable.
     input_type : InputType
@@ -900,7 +900,7 @@ def app(
 
     class Flow(FlowSpec):
         @step
-        def pre_process(input: dict[str, any]) -> dict[str, any]:
+        def pre_process(input: dict[str, Any]) -> dict[str, Any]:
             log("You can pre-process your data here.")
             return input
 
@@ -912,7 +912,7 @@ def app(
 
         @needs(predecessors=[solve])
         @step
-        def post_process(result: dict[str, any]) -> dict[str, any]:
+        def post_process(result: dict[str, Any]) -> dict[str, Any]:
             log("You can post-process your data here.")
             return result
 

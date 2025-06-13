@@ -4,7 +4,7 @@ Several examples assume you have a Nextmv application called `echo`. This is
 just a simple application created for demonstration purposes. It takes the
 input and echoes it with some minor modifications.
 
-Let’s get set up with the `echo` application. Before starting:
+Let's get set up with the `echo` application. Before starting:
 
 1. [Sign up][signup] for a Nextmv account.
 2. Get your API key. Go to [Team > API Key][api-key].
@@ -15,7 +15,7 @@ Make sure that you have your API key set as an environment variable:
 export NEXTMV_API_KEY="<YOUR-API-KEY>"
 ```
 
-Now that you have a valid Nextmv account and API key, let’s create the `echo`
+Now that you have a valid Nextmv account and API key, let's create the `echo`
 Nextmv app.
 
 1. In a new directory, create a file called `main.py` with the code for the

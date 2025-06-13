@@ -24,6 +24,7 @@ import inspect
 import sys
 import threading
 from functools import wraps
+from typing import Any
 
 THREAD_NAME_PREFIX = "nextpipe-"
 """str: Prefix for thread names created by nextpipe."""
@@ -134,7 +135,7 @@ def wrap_func(function):
     return func_wrapper
 
 
-def convert_to_string_values(input_dict: dict[str, any]) -> dict[str, str]:
+def convert_to_string_values(input_dict: dict[str, Any]) -> dict[str, str]:
     """
     Converts all values of the given dictionary to strings.
 
@@ -143,7 +144,7 @@ def convert_to_string_values(input_dict: dict[str, any]) -> dict[str, str]:
 
     Parameters
     ----------
-    input_dict : dict[str, any]
+    input_dict : dict[str, Any]
         The dictionary with values to convert.
 
     Returns

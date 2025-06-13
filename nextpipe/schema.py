@@ -12,9 +12,11 @@ AppRunConfig
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional, Union
 
 from dataclasses_json import dataclass_json
+
+from . import utils
 
 
 @dataclass_json
@@ -36,7 +38,7 @@ class AppOption:
     ----------
     name : str
         Key for the option.
-    value : any
+    value : Any
         Value for the option.
 
     Examples
@@ -47,7 +49,7 @@ class AppOption:
 
     name: str
     """Key for the option."""
-    value: any
+    value: Any
     """Value for the option."""
 
 
@@ -68,10 +70,11 @@ class AppRunConfig:
 
     Parameters
     ----------
-    input : dict[str, any], optional
+    input : dict[str, Any], optional
         Input data for the app, by default None.
-    options : list[AppOption], optional
-        Options for running the app, by default an empty list.
+    options : Union[list[AppOption], dict[str, Any]], optional
+        Options for running the app, by default empty. These can be provided as a list of
+        `AppOption` instances, or, simply as a dictionary of key-value pairs.
     name : str, optional
         Name for the run, by default None.
 
@@ -80,14 +83,32 @@ class AppRunConfig:
     >>> from nextpipe import AppRunConfig, AppOption
     >>> config = AppRunConfig(
     ...     input={"data": [1, 2, 3]},
-    ...     options=[AppOption(name="threads", value=4)],
+    ...     options={"threads": 4},
     ...     name="my-run"
     ... )
     """
 
-    input: dict[str, any] = None
+    input: dict[str, Any] = None
     """Input for the app."""
-    options: list[AppOption] = field(default_factory=list)
+    options: Union[list[AppOption], dict[str, Any]] = field(default_factory=list)
     """Options for running the app."""
     name: Optional[str] = None
     """Name for the run."""
+
+    def get_options(self) -> dict[str, Any]:
+        """
+        Get options as a dictionary.
+
+        This method converts the `options` attribute to a dictionary if it is provided
+        as a list of `AppOption` instances.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary of options.
+        """
+        options = self.options
+        if isinstance(self.options, list):
+            options = {option.name: option.value for option in self.options}
+        options = utils.convert_to_string_values(options)
+        return options
