@@ -51,6 +51,7 @@ from enum import Enum
 from functools import wraps
 
 from nextmv import cloud
+from nextmv.deprecated import deprecated
 
 from . import utils
 
@@ -769,8 +770,8 @@ class App:
         The ID of the Nextmv Application to run.
     instance_id : str
         The ID of the instance to run.
-    parameters : dict[str, any]
-        The parameters to pass to the application.
+    options : dict[str, any]
+        The options to pass to the application.
     input_type : InputType
         The type of input to pass to the application (JSON or FILES).
     full_result : bool
@@ -785,6 +786,7 @@ class App:
         instance_id: str = "devint",
         input_type: InputType = InputType.JSON,
         parameters: dict[str, any] = None,
+        options: dict[str, any] = None,
         full_result: bool = False,
         polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
     ):
@@ -799,17 +801,27 @@ class App:
             The ID of the instance to run, by default "devint".
         input_type : InputType, optional
             The type of input to pass to the application, by default InputType.JSON.
-        parameters : dict[str, any], optional
-            The parameters to pass to the application, by default None.
+        options : dict[str, any], optional
+            The options to pass to the application, by default None.
         full_result : bool, optional
             Whether to return the full result including metadata, by default False.
         polling_options : Optional[cloud.PollingOptions], optional
             Options for polling for the results of the app run, by default _DEFAULT_POLLING_OPTIONS.
         """
 
+        # Make sure only one of options or parameters is used.
+        if parameters and options:
+            raise ValueError("You can only use either 'parameters' or 'options', not both.")
+        if parameters:
+            deprecated(
+                "parameters",
+                "Use 'options' instead. The 'parameters' argument will be removed in a future release.",
+            )
+            options = parameters
+
         self.app_id = app_id
         self.instance_id = instance_id
-        self.parameters = parameters if parameters else {}
+        self.options = options if options else {}
         self.input_type = input_type
         self.full_result = full_result
         self.polling_options = polling_options
@@ -823,13 +835,14 @@ class App:
             A string representation of the app.
         """
 
-        return f"StepRun({self.app_id}, {self.instance_id}, {self.parameters}, {self.input_type}, {self.full_result})"
+        return f"StepRun({self.app_id}, {self.instance_id}, {self.options}, {self.input_type}, {self.full_result})"
 
 
 def app(
     app_id: str,
     instance_id: str = "devint",
     parameters: dict[str, any] = None,
+    options: dict[str, any] = None,
     input_type: InputType = InputType.JSON,
     full_result: bool = False,
     polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
@@ -845,7 +858,7 @@ def app(
     ```
 
     If this decorator is used, an external application will be run, using the
-    specified parameters. You need to have a valid Nextmv account and
+    specified options. You need to have a valid Nextmv account and
     Application before you can use this decorator. Make sure the
     `NEXTMV_API_KEY` environment variable is set as well.
 
@@ -855,8 +868,8 @@ def app(
         The ID of the application to run.
     instance_id : str
         The ID of the instance to run. Default is "devint".
-    parameters : dict[str, any]
-        The parameters to pass to the application. This is a dictionary of
+    options : dict[str, any]
+        The options to pass to the application. This is a dictionary of
         parameter names and values. The values must be JSON serializable.
     input_type : InputType
         The type of input to pass to the application. This can be either
@@ -911,20 +924,30 @@ def app(
     ```
     """
 
+    # Make sure only one of options or parameters is used.
+    if parameters and options:
+        raise ValueError("You can only use either 'parameters' or 'options', not both.")
+    if parameters:
+        deprecated(
+            "parameters",
+            "Use 'options' instead. The 'parameters' argument will be removed in a future release.",
+        )
+        options = parameters
+
+    # We need to make sure that all values of the options are converted to strings, as no
+    # other types are allowed in the JSON.
+    converted_options = utils.convert_to_string_values(options if options else {})
+
     def decorator(function):
         @wraps(function)
         def wrapper(*args, **kwargs):
             utils.log_internal(f"Running {app_id} version {instance_id}")
             return function(*args, **kwargs)
 
-        # We need to make sure that all values of the parameters are converted to strings,
-        # as no other types are allowed in the JSON.
-        converted_parameters = utils.convert_to_string_values(parameters if parameters else {})
-
         wrapper.step.app = App(
             app_id=app_id,
             instance_id=instance_id,
-            parameters=converted_parameters,
+            options=converted_options,
             input_type=input_type,
             full_result=full_result,
             polling_options=polling_options,
