@@ -5,6 +5,14 @@ It allows you to define complex workflows with multiple steps, manage
 dependencies between these steps, and integrate with external applications and
 solvers.
 
+You can find example workflows among the [community apps][community-apps]. There
+name starts with `python-wf-*` (wf stands for workflow). These examples can be
+cloned using the [Nextmv CLI][cli] tool:
+
+```bash
+nextmv community clone -a <app-name>
+```
+
 ## Core Concepts
 
 ### Workflows - `FlowSpec`
@@ -247,3 +255,5 @@ provided in the output. The diagram shows the flow of data between the steps.
 
 [basic-example]: ../examples/basic-chained-workflow.md
 [mermaid-link]: https://mermaid.ink/svg/Z3JhcGggTFIKICBwcmVwYXJlKHByZXBhcmUpCiAgcHJlcGFyZSAtLT4gc29sdmUKICBzb2x2ZShzb2x2ZSkKICBzb2x2ZSAtLT4gZW5oYW5jZQogIGVuaGFuY2UoZW5oYW5jZSkK?theme=dark
+[community-apps]: https://github.com/nextmv-io/community-apps
+[cli]: https://docs.nextmv.io/docs/using-nextmv/setup/install#nextmv-cli
