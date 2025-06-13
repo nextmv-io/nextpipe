@@ -92,3 +92,19 @@ class AppRunConfig:
     """Options for running the app."""
     name: Optional[str] = None
     """Name for the run."""
+
+    def get_options(self) -> dict[str, Any]:
+        """
+        Get options as a dictionary.
+
+        This method converts the `options` attribute to a dictionary if it is provided
+        as a list of `AppOption` instances.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary of options.
+        """
+        if isinstance(self.options, list):
+            return {option.name: option.value for option in self.options}
+        return self.options

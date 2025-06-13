@@ -919,7 +919,7 @@ class Runner:
                 app_run_config: schema.AppRunConfig = inputs[0]
                 input = app_run_config.input
                 name = app_run_config.name if app_run_config.name else node.id
-                app_run_options = {option.name: option.value for option in app_run_config.options}
+                app_run_options = app_run_config.get_options()
                 # Merge the options from the app decorator with the options from the
                 # AppRunConfig. AppRunConfig options take precedence.
                 options = app_step.options | app_run_options
