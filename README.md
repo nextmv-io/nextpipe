@@ -78,4 +78,4 @@ graph LR
 
 [nextpipe-pypi]: https://pypi.org/project/nextpipe/
 [nextmv]: https://nextmv.io
-[docs]: https://nextpipe.readthedocs.io/en/latest/
+[docs]: https://nextpipe.docs.nextmv.io/en/latest/
