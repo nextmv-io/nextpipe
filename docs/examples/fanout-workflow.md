@@ -7,11 +7,11 @@
 
 This is a more advanced example demonstrating dynamic fanout and joining of
 results. This example shows how to create multiple copies of the input data,
-configure them with different parameters, and then run the model in parallel.
+configure them with different options, and then run the model in parallel.
 Finally, it collects the results and merges them into a single output.
 
 This is useful when you need to parallelize the execution of a model with
-different configurations or parameters.
+different configurations or options.
 
 ```python
 import copy
@@ -28,7 +28,7 @@ class Workflow(FlowSpec):
     @step
     def fanout(data: dict[str, Any]) -> list[AppRunConfig]:
         """
-        Creates 3 copies of the input and configures them for 3 different app parameters.
+        Creates 3 copies of the input and configures them for 3 different app options.
         """
 
         inputs = [copy.deepcopy(data) for _ in range(3)]
