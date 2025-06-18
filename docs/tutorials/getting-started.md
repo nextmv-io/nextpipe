@@ -197,7 +197,7 @@ pass a list of `AppRunConfig` objects to specify different configurations for
 each run:
 
 ```python
-from nextpipe.schema import AppRunConfig, AppOption
+from nextpipe.schema import AppRunConfig
 
 @foreach()
 @step
@@ -205,17 +205,17 @@ def create_scenarios(data: dict):
     """Create multiple scenarios to solve with different configurations."""
     return [
         AppRunConfig(
-            name: "scenario1",
-            input: data,
-            options: {
-                "vehicles": 50,
+            name="scenario1",
+            input=data,
+            options={
+                "solve.duration": "5s",
             },
         ),
         AppRunConfig(
-            name: "scenario2",
-            input: data,
-            options: {
-                "vehicles": 100,
+            name="scenario2",
+            input=data,
+            options={
+                "solve.duration": "10s",
             },
         ),
     ]
