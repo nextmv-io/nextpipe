@@ -12,7 +12,7 @@ class Flow(FlowSpec):
     @step
     def fanout(data: dict):
         """
-        Creates 3 copies of the input and configures them for 3 different app parameters.
+        Creates 3 copies of the input and configures them for 3 different app options.
         """
         inputs = [copy.deepcopy(data) for _ in range(3)]
         run_configs = [AppRunConfig(input, [AppOption("param", i)]) for i, input in enumerate(inputs)]
