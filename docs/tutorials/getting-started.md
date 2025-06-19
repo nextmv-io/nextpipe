@@ -185,6 +185,51 @@ def merge(results: list[dict]):
     return merged_result
 ```
 
+### Dynamically customizing App Runs
+
+!!! tip "Reference"
+
+    Find the reference for the `AppRunConfig` class [here](../reference/config.md##nextpipe.schema.AppRunConfig).
+
+The `AppRunConfig` class allows you to dynamically customize app runs.
+Particularly, when fanning out steps using the `@foreach` decorator, you can
+pass a list of `AppRunConfig` objects to specify different configurations for
+each run:
+
+```python
+from nextpipe.schema import AppRunConfig
+
+@foreach()
+@step
+def create_scenarios(data: dict):
+    """Create multiple scenarios to solve with different configurations."""
+    return [
+        AppRunConfig(
+            name="scenario1",
+            input=data,
+            options={
+                "solve.duration": "5s",
+            },
+        ),
+        AppRunConfig(
+            name="scenario2",
+            input=data,
+            options={
+                "solve.duration": "10s",
+            },
+        ),
+    ]
+
+@needs(predecessors=[create_scenarios])
+@app(app_id="solver-app", instance_id="latest")
+@step
+def solve():
+    """Run external solver for each scenario."""
+    pass
+```
+
+The `AppRunConfig` will be applied to each run of the `solve` step.
+
 ## Output & visualization
 
 After running a `nextpipe` program, the output is composed of the following

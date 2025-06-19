@@ -15,7 +15,7 @@ workflow that runs multiple solver instances in parallel and then picks the
 best result.
 
 This is useful when you want to run multiple solver instances with different
-parameters or configurations, and then select the best result from the
+options or configurations, and then select the best result from the
 ensemble.
 
 ```python

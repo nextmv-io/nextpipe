@@ -85,7 +85,7 @@ class Workflow(FlowSpec):
     @app(
         app_id="routing-nextroute",
         instance_id="latest",
-        parameters={"solve.duration": "30s"},
+        options={"solve.duration": "30s"},
         full_result=True,
     )
     @repeat(repetitions=3)
