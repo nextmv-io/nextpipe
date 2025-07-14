@@ -8,6 +8,8 @@ on:
         description: "The version to release"
         required: true
   push:
+    branches:
+      - develop
 
 jobs:
   release:
@@ -135,6 +137,12 @@ jobs:
           echo "IS_PRE_RELEASE=false" >> $GITHUB_ENV
           echo "Detected stable release version: $VERSION"
         working-directory: ./nextpipe
+
+      - name: check that a manual release cannot be a stable release
+        if: ${{ env.IS_AUTOMATED == 'false' && env.IS_PRE_RELEASE == 'false' }}
+        run: |
+          echo "Manual release cannot be a stable release"
+          exit 1
 
       - name: bump version in requirements.txt
         if: ${{ env.RELEASE_NEEDED == 'true' }}
