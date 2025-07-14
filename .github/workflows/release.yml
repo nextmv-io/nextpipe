@@ -102,7 +102,8 @@ jobs:
 
           CHANGES=${{ steps.filter.outputs.changes }}
           echo "CHANGES: $CHANGES"
-          if [ -z "$CHANGES" ]; then
+          CHANGES_ARE_ZERO=$(echo $CHANGES | jq '. | length == 0')
+          if [ "$CHANGES_ARE_ZERO" = "true" ]; then
             echo "Automated mode - No changes detected"
             echo "RELEASE_NEEDED=false" >> $GITHUB_ENV
             echo "Automated mode - Release is not needed"
@@ -120,7 +121,7 @@ jobs:
       - name: set the package version
         if: ${{ env.RELEASE_NEEDED == 'true' }}
         run: |
-          export VERSION=$(hatch version)
+          export VERSION="v$(hatch version)"
           echo "This is the version"
           echo $VERSION
           echo "VERSION=$VERSION" >> $GITHUB_ENV
