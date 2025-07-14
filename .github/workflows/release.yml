@@ -102,8 +102,7 @@ jobs:
 
           CHANGES=${{ steps.filter.outputs.changes }}
           echo "CHANGES: $CHANGES"
-          CHANGES_ARE_ZERO=$(echo $CHANGES | jq '. | length == 0')
-          if [ "$CHANGES_ARE_ZERO" = "true" ]; then
+          if [ "$CHANGES" = "[]" ]; then
             echo "Automated mode - No changes detected"
             echo "RELEASE_NEEDED=false" >> $GITHUB_ENV
             echo "Automated mode - Release is not needed"
