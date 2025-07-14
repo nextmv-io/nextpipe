@@ -1,5 +1,5 @@
 name: release
-run-name: Release ${{ inputs.VERSION }} (pre-release - ${{ inputs.IS_PRE_RELEASE }}) by @${{ github.actor }} from ${{ github.ref_name }}
+run-name: Release ${{ inputs.VERSION }} by @${{ github.actor }} from ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -7,26 +7,29 @@ on:
       VERSION:
         description: "The version to release"
         required: true
-      IS_PRE_RELEASE:
-        description: "It IS a pre-release"
-        required: true
-        default: false
-        type: boolean
+  push:
 
 jobs:
-  bump: # This job is used to bump the version and create a release
+  release:
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ inputs.VERSION }}
       GH_TOKEN: ${{ github.token }}
       SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+      IS_AUTOMATED: true
+      RELEASE_NEEDED: true
+      IS_PRE_RELEASE: true
     permissions:
-      contents: write
+      contents: write # Required for creating releases and tags
+      id-token: write # This is required for trusted publishing to PyPI
+    environment:
+      name: pypi
+      url: https://pypi.org/p/nextpipe
     steps:
       - name: set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: install dependencies
         run: |
@@ -52,28 +55,113 @@ jobs:
           cd nextpipe
           git switch ${{ github.ref_name }}
 
-      - name: upgrade version with hatch
-        run: hatch version ${{ env.VERSION }}
+      - name: check that a manual release cannot be done on develop
+        if: ${{ env.IS_AUTOMATED == 'false' && github.ref_name == 'develop' }}
+        run: |
+          echo "Manual release cannot be done on develop"
+          exit 1
+
+      - name: set the automated flag based on workflow trigger
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "IS_AUTOMATED=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "IS_AUTOMATED=true" >> $GITHUB_ENV
+
+      - name: set filters file for changed paths - automated mode
+        if: ${{ env.IS_AUTOMATED == 'true' }}
+        run: |
+          FILTERS_FILE="./.github/filters.yml"
+          touch $FILTERS_FILE
+          echo "nextpipe:" >> $FILTERS_FILE
+          echo "  - 'nextpipe/__about__.py'" >> $FILTERS_FILE
+
+          echo "Successfully created filters and wrote them to ${FILTERS_FILE}"
+          cat $FILTERS_FILE
+        working-directory: ./nextpipe
+
+      - name: filter changed directories - automated mode
+        if: ${{ env.IS_AUTOMATED == 'true' }}
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: .github/filters.yml
+          working-directory: ./nextpipe
+
+      - name: determine if release is needed
+        run: |
+          echo "Checking if release is needed"
+          echo "IS_AUTOMATED: ${{ env.IS_AUTOMATED }}"
+          if [ "${{ env.IS_AUTOMATED }}" = "false" ]; then
+            echo "RELEASE_NEEDED=true" >> $GITHUB_ENV
+            echo "Manual mode - Release is needed"
+            exit 0
+          fi
+
+          CHANGES=${{ steps.filter.outputs.changes }}
+          echo "CHANGES: $CHANGES"
+          if [ -z "$CHANGES" ]; then
+            echo "Automated mode - No changes detected"
+            echo "RELEASE_NEEDED=false" >> $GITHUB_ENV
+            echo "Automated mode - Release is not needed"
+            exit 0
+          fi
+
+          echo "RELEASE_NEEDED=true" >> $GITHUB_ENV
+          echo "Automated mode - Release is needed"
+
+      - name: upgrade version with hatch - manual mode
+        if: ${{ env.IS_AUTOMATED == 'false' && env.RELEASE_NEEDED == 'true' }}
+        run: hatch version ${{ inputs.VERSION }}
+        working-directory: ./nextpipe
+
+      - name: set the package version
+        if: ${{ env.RELEASE_NEEDED == 'true' }}
+        run: |
+          export VERSION=$(hatch version)
+          echo "This is the version"
+          echo $VERSION
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          # Check if version is a pre-release
+          if [[ "$VERSION" =~ (alpha|beta|rc|dev|pre|a|b) ]]; then
+            echo "IS_PRE_RELEASE=true" >> $GITHUB_ENV
+            echo "Detected pre-release version: $VERSION"
+            exit 0
+          fi
+
+          echo "IS_PRE_RELEASE=false" >> $GITHUB_ENV
+          echo "Detected stable release version: $VERSION"
         working-directory: ./nextpipe
 
       - name: bump version in requirements.txt
+        if: ${{ env.RELEASE_NEEDED == 'true' }}
         run: |
           bash .nextmv/bump_requirements.sh ${{ env.VERSION }}
         working-directory: ./nextpipe
 
-      - name: commit new version
+      - name: commit new version - manual mode
+        if: ${{ env.IS_AUTOMATED == 'false' && env.RELEASE_NEEDED == 'true' }}
         run: |
-          git add --all
-          git commit -S -m "Bump version to $VERSION"
+          git add nextpipe/__about__.py
+          git commit -S -m "Bump nextpipe version to ${{ env.VERSION }}"
           git push
-          git tag $VERSION
-          git push origin $VERSION
+        working-directory: ./nextpipe
+
+      - name: tag new version
+        if: ${{ env.RELEASE_NEEDED == 'true' }}
+        run: |
+          git tag ${{ env.VERSION }}
+          git push origin ${{ env.VERSION }}
         working-directory: ./nextpipe
 
       - name: create release
+        if: ${{ env.RELEASE_NEEDED == 'true' }}
         run: |
           PRERELEASE_FLAG=""
-          if [ ${{ inputs.IS_PRE_RELEASE }} = true ]; then
+          if [ ${{ env.IS_PRE_RELEASE }} = true ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
 
@@ -83,64 +171,19 @@ jobs:
           --title $VERSION $PRERELEASE_FLAG
         working-directory: ./nextpipe
 
-      - name: ensure passing build
+      - name: build binary wheel and source tarball
+        if: ${{ env.RELEASE_NEEDED == 'true' }}
         run: python -m build
         working-directory: ./nextpipe
 
-  release: # This job is used to publish the release to PyPI/TestPyPI
-    runs-on: ubuntu-latest
-    needs: bump
-    strategy:
-      matrix:
-        include:
-          - target-env: pypi
-            target-url: https://pypi.org/p/nextpipe
-          - target-env: testpypi
-            target-url: https://test.pypi.org/p/nextpipe
-    environment:
-      name: ${{ matrix.target-env }}
-      url: ${{ matrix.target-url }}
-    permissions:
-      contents: read
-      id-token: write # This is required for trusted publishing to PyPI
-    steps:
-      - name: git clone ${{ github.ref_name }}
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-
-      - name: set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install build hatch
-
-      - name: build binary wheel and source tarball
-        run: python -m build
-
-      - name: Publish package distributions to PyPI
-        if: ${{ matrix.target-env == 'pypi' }}
+      - name: publish package distributions to PyPI
+        if: ${{ env.RELEASE_NEEDED == 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: ./dist
+          packages-dir: ./nextpipe/dist
 
-      - name: Publish package distributions to TestPyPI
-        if: ${{ matrix.target-env == 'testpypi' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: ./dist
-
-  notify:
-    runs-on: ubuntu-latest
-    needs: release
-    if: ${{ needs.release.result == 'success' && inputs.IS_PRE_RELEASE == false }}
-    steps:
       - name: notify slack
+        if: ${{ env.RELEASE_NEEDED == 'true' && env.IS_PRE_RELEASE == 'false' }}
         run: |
           export DATA="{\"text\":\"Release notification - nextpipe ${{ inputs.VERSION }} (see <https://github.com/nextmv-io/nextpipe/releases/${{ inputs.VERSION }}|release notes> / <https://pypi.org/project/nextpipe|PyPI>)\"}"
           curl -X POST -H 'Content-type: application/json' --data "$DATA" ${{ secrets.SLACK_URL_MISSION_CONTROL }}
