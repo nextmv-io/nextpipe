@@ -32,6 +32,11 @@ jobs:
       - name: set up Python
         uses: actions/setup-python@v5
 
+      - name: install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install build hatch
+
       - name: python - build binary wheel and source tarball
         if: ${{ env.RELEASE_NEEDED == 'true' }}
         run: python -m build
