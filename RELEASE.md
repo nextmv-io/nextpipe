@@ -1,4 +1,4 @@
-# Release instructions
+# Release
 
 A reusable workflow is used to release the package. Nextmv team members: please
 go to the corresponding repository for more information.
