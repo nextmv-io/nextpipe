@@ -22,6 +22,8 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/nextpipe
+    permissions:
+      id-token: write # This is required for trusted publishing to PyPI
     steps:
       - name: git clone ${{ github.ref_name }}
         uses: actions/checkout@v4
