@@ -17,4 +17,3 @@ will automatically create a release and publish the package to PyPI.
 Update the version in the `nextpipe/__about__.py` file to a dev tag. When a
 commit is pushed, the `release.yml` workflow will be triggered and it will
 automatically create a release and publish the package to PyPI.
-
