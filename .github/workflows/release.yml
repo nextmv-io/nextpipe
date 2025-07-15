@@ -15,3 +15,4 @@ jobs:
       PACKAGE_NAME: nextpipe
       PACKAGE_LOCATION: .
       VERSION_FILE: __about__.py
+    secrets: inherit
