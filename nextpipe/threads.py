@@ -13,10 +13,17 @@ Pool
 The module also provides a thread local storage variable for thread-specific data.
 """
 
-import multiprocessing
 import threading
 from collections.abc import Callable
 from typing import Any, Optional
+
+DEFAULT_MAX_THREADS = 24
+"""
+Default maximum number of threads for the thread pool. This is set to 24, to allow
+parallel execution of sub-runs in the pipeline (as these are typically not CPU-bound). A
+lower value more fit for the respective hardware is recommended when running many
+CPU-bound steps.
+"""
 
 thread_local = threading.local()
 """Thread-local storage.
@@ -176,11 +183,11 @@ class Pool:
         ----------
         max_threads : int, optional
             Maximum number of threads to use, by default 0.
-            If <= 0, uses the number of CPU cores.
+            If <= 0, "DEFAULT_MAX_THREADS" is used.
         """
 
         if max_threads <= 0:
-            max_threads = multiprocessing.cpu_count()
+            max_threads = DEFAULT_MAX_THREADS
         self.max_threads = max_threads
         self.counter = 0  # Used to assign unique IDs to threads
         self.waiting = {}
