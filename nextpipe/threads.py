@@ -183,7 +183,7 @@ class Pool:
         ----------
         max_threads : int, optional
             Maximum number of threads to use, by default 0.
-            If <= 0, "DEFAULT_MAX_THREADS" is used.
+            If <= 0, DEFAULT_MAX_THREADS is used.
         """
 
         if max_threads <= 0:
