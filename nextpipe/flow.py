@@ -953,8 +953,9 @@ class Runner:
             app = Application(
                 client=client,
                 id=app_step.app_id,
-                default_instance_id=app_step.instance_id,
             )
+            if app_step.instance_id is not None and app_step.instance_id != "":
+                app.default_instance_id = app_step.instance_id
 
             # Run the application
             result = app.new_run_with_result(
@@ -963,6 +964,7 @@ class Runner:
             )
             run_id = result.id
             node.run_id = run_id
+            utils.log_internal(f"Finished app step {node.id} run, find it at {result.console_url}")
 
             # Return result (do not unwrap if full result is requested)
             if app_step.full_result:

@@ -254,7 +254,7 @@ Consider the following output taken from the [basic example][basic-example]:
 [nextpipe]   Definition: Step(prepare)
 [nextpipe]   Docstring: Prepares the data.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(solve, StepNeeds(prepare), StepRun(echo, devint, {}, InputType.JSON, False))
+[nextpipe]   Definition: Step(solve, StepNeeds(prepare), StepRun(echo, latest, {}, InputType.JSON, False))
 [nextpipe]   Docstring: Runs the model.
 [nextpipe] Step:
 [nextpipe]   Definition: Step(enhance, StepNeeds(solve))
