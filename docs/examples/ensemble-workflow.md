@@ -27,7 +27,7 @@ from nextpipe import FlowSpec, app, log, needs, repeat, step
 
 # Define the options for the workflow
 options = nextmv.Options(
-    nextmv.Option("instance", str, "latest", "App instance to use. If not provided, app-defined is used.", False),
+    nextmv.Option("instance", str, "", "App instance to use. If not provided, app-defined is used.", False),
 )
 
 
