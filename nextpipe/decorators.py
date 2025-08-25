@@ -798,7 +798,7 @@ class App:
         app_id : str
             The ID of the Nextmv Application to run.
         instance_id : str, optional
-            The ID of the instance to run, uses default instance by default.
+            The ID of the instance to run. Default is defined by the app on Platform.
         input_type : InputType, optional
             The type of input to pass to the application, by default InputType.JSON.
         options : dict[str, Any], optional
