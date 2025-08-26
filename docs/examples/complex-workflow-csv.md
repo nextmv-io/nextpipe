@@ -95,14 +95,14 @@ class Workflow(FlowSpec):
         """Solve the problem using the Nextroute solver."""
         pass
 
-    @app(app_id="routing-pyvroom", instance_id="latest", full_result=True)
+    @app(app_id="routing-pyvroom", full_result=True)
     @needs(predecessors=[align])
     @step
     def solve_vroom() -> dict[str, Any]:
         """Solve the problem using the Vroom solver."""
         pass
 
-    @app(app_id="routing-ortools", instance_id="latest", full_result=True)
+    @app(app_id="routing-ortools", full_result=True)
     @needs(predecessors=[align])
     @step
     def solve_ortools() -> dict[str, Any]:
@@ -166,13 +166,13 @@ $ echo '{}' | python main.py
 [nextpipe]   Definition: Step(align, StepNeeds(convert))
 [nextpipe]   Docstring: Align the input data for the solver.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(solve_nextroute, StepNeeds(convert), StepRepeat(3), StepRun(routing-nextroute, latest, {'solve.duration': '30s'}, InputType.JSON, True))
+[nextpipe]   Definition: Step(solve_nextroute, StepNeeds(convert), StepRepeat(3), StepRun(routing-nextroute, , {'solve.duration': '30s'}, InputType.JSON, True))
 [nextpipe]   Docstring: Solve the problem using the Nextroute solver.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(solve_vroom, StepNeeds(align), StepRun(routing-pyvroom, latest, {}, InputType.JSON, True))
+[nextpipe]   Definition: Step(solve_vroom, StepNeeds(align), StepRun(routing-pyvroom, , {}, InputType.JSON, True))
 [nextpipe]   Docstring: Solve the problem using the Vroom solver.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(solve_ortools, StepNeeds(align), StepRun(routing-ortools, latest, {}, InputType.JSON, True))
+[nextpipe]   Definition: Step(solve_ortools, StepNeeds(align), StepRun(routing-ortools, , {}, InputType.JSON, True))
 [nextpipe]   Docstring: Solve the problem using the OR-Tools solver.
 [nextpipe] Step:
 [nextpipe]   Definition: Step(pick_best, StepNeeds(solve_nextroute,solve_vroom,solve_ortools))
