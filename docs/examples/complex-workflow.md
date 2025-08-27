@@ -60,21 +60,21 @@ class Workflow(FlowSpec):
         return clone
 
     @repeat(repetitions=2)
-    @app(app_id="routing-nextroute", instance_id="latest")
+    @app(app_id="routing-nextroute")
     @needs(predecessors=[prepare])
     @step
     def run_nextroute() -> list[dict[str, Any]]:
         """Runs the model."""
         pass
 
-    @app(app_id="routing-ortools", instance_id="latest")
+    @app(app_id="routing-ortools")
     @needs(predecessors=[convert])
     @step
     def run_ortools() -> dict[str, Any]:
         """Runs the model."""
         pass
 
-    @app(app_id="routing-pyvroom", instance_id="latest")
+    @app(app_id="routing-pyvroom")
     @needs(predecessors=[convert])
     @step
     def run_pyvroom() -> dict[str, Any]:
@@ -147,13 +147,13 @@ $ curl "https://gist.githubusercontent.com/merschformann/a90959b87d1360b604e4a9f
 [nextpipe]   Definition: Step(convert, StepNeeds(prepare))
 [nextpipe]   Docstring: Converts the data.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(run_nextroute, StepNeeds(prepare), StepRepeat(2), StepRun(routing-nextroute, latest, {}, InputType.JSON, False))
+[nextpipe]   Definition: Step(run_nextroute, StepNeeds(prepare), StepRepeat(2), StepRun(routing-nextroute, , {}, InputType.JSON, False))
 [nextpipe]   Docstring: Runs the model.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(run_ortools, StepNeeds(convert), StepRun(routing-ortools, latest, {}, InputType.JSON, False))
+[nextpipe]   Definition: Step(run_ortools, StepNeeds(convert), StepRun(routing-ortools, , {}, InputType.JSON, False))
 [nextpipe]   Docstring: Runs the model.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(run_pyvroom, StepNeeds(convert), StepRun(routing-pyvroom, latest, {}, InputType.JSON, False))
+[nextpipe]   Definition: Step(run_pyvroom, StepNeeds(convert), StepRun(routing-pyvroom, , {}, InputType.JSON, False))
 [nextpipe]   Docstring: Runs the model.
 [nextpipe] Step:
 [nextpipe]   Definition: Step(pick_best, StepNeeds(run_nextroute,run_ortools,run_pyvroom))

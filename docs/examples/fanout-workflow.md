@@ -114,7 +114,7 @@ $ echo '{"hello": "world!"}' | python main.py
         Calculates some statistics to put on the output as well.
         
 [nextpipe] Step:
-[nextpipe]   Definition: Step(solve, StepNeeds(fanout), StepRun(echo, devint, {}, InputType.JSON, False))
+[nextpipe]   Definition: Step(solve, StepNeeds(fanout), StepRun(echo, latest, {}, InputType.JSON, False))
 [nextpipe]   Docstring: 
         Runs the model.
         

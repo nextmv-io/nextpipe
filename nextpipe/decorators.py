@@ -783,7 +783,7 @@ class App:
     def __init__(
         self,
         app_id: str,
-        instance_id: str = "devint",
+        instance_id: str = "",
         input_type: InputType = InputType.JSON,
         parameters: dict[str, typing.Any] = None,
         options: dict[str, typing.Any] = None,
@@ -798,7 +798,7 @@ class App:
         app_id : str
             The ID of the Nextmv Application to run.
         instance_id : str, optional
-            The ID of the instance to run, by default "devint".
+            The ID of the instance to run. Default is defined by the app on Platform.
         input_type : InputType, optional
             The type of input to pass to the application, by default InputType.JSON.
         options : dict[str, Any], optional
@@ -840,7 +840,7 @@ class App:
 
 def app(
     app_id: str,
-    instance_id: str = "devint",
+    instance_id: str = "",
     parameters: dict[str, typing.Any] = None,
     options: dict[str, typing.Any] = None,
     input_type: InputType = InputType.JSON,
@@ -867,7 +867,7 @@ def app(
     app_id : str
         The ID of the application to run.
     instance_id : str
-        The ID of the instance to run. Default is "devint".
+        The ID of the instance to run. Default is defined by the app on Platform.
     options : dict[str, Any]
         The options to pass to the application. This is a dictionary of
         parameter names and values. The values must be JSON serializable.

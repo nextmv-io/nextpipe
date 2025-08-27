@@ -101,7 +101,7 @@ def process_both(result_from_step1: dict, result_from_step2: dict):
 decorator:
 
 ```python
-@app(app_id="solver-app", instance_id="latest")
+@app(app_id="solver-app")
 @needs(predecessors=[prepare])
 @step
 def solve():
@@ -221,7 +221,7 @@ def create_scenarios(data: dict):
     ]
 
 @needs(predecessors=[create_scenarios])
-@app(app_id="solver-app", instance_id="latest")
+@app(app_id="solver-app")
 @step
 def solve():
     """Run external solver for each scenario."""
@@ -254,7 +254,7 @@ Consider the following output taken from the [basic example][basic-example]:
 [nextpipe]   Definition: Step(prepare)
 [nextpipe]   Docstring: Prepares the data.
 [nextpipe] Step:
-[nextpipe]   Definition: Step(solve, StepNeeds(prepare), StepRun(echo, devint, {}, InputType.JSON, False))
+[nextpipe]   Definition: Step(solve, StepNeeds(prepare), StepRun(echo, , {}, InputType.JSON, False))
 [nextpipe]   Docstring: Runs the model.
 [nextpipe] Step:
 [nextpipe]   Definition: Step(enhance, StepNeeds(solve))
