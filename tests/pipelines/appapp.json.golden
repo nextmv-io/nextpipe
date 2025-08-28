@@ -1,0 +1,10 @@
+{
+    "echo": {
+        "data": {
+            "hello": "world!",
+            "prepared": true,
+            "enhanced": true
+        },
+        "args": []
+    }
+}
