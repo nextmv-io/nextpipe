@@ -963,6 +963,10 @@ class Runner:
                 },
             )
 
+            # Apply run configuration if given.
+            if app_step.run_configuration is not None:
+                run_args[1]["configuration"] = app_step.run_configuration
+
             # Prepare the application itself.
             app = Application(
                 client=client,
