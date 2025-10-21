@@ -1,11 +1,10 @@
 import os
 import shutil
-import tempfile
 
 import nextmv
 import nextmv.cloud
 
-from nextpipe import FlowSpec, app, needs, step
+from nextpipe import FlowSpec, app, log, needs, step
 
 # TODO: remove debug helper
 os.environ["NEXTMV_API_KEY"] = os.getenv("NEXTMV_API_KEY_PROD")
@@ -29,18 +28,30 @@ class Flow(FlowSpec):
     @step
     def transform(result_path: str):
         """Transforms the result for the next step."""
-        # Simply copy the files from the given directory to a new temp directory.
-        with tempfile.TemporaryDirectory() as temp_dir:
-            for file_name in os.listdir(result_path):
-                full_file_name = os.path.join(result_path, file_name)
-                if os.path.isfile(full_file_name):
-                    shutil.copy(full_file_name, temp_dir)
+        # Just list the content of the result directory.
+        log(f"Contents of result directory {result_path}:")
+        for file_name in os.listdir(result_path):
+            full_file_name = os.path.join(result_path, file_name)
+            if os.path.isfile(full_file_name):
+                log(f"- {file_name}")
 
-            # Add another small file to demonstrate this step passed.
-            with open(os.path.join(temp_dir, "transformed.txt"), "w") as f:
-                f.write("This file was added in the transform step.\n")
+        # Add a new file to the result for demonstration purposes.
+        new_file_path = os.path.join(result_path, "additional_file.txt")
+        with open(new_file_path, "w") as f:
+            f.write("This is an additional file added in the transform step.\n")
+        log(f"Added new file: {new_file_path}")
 
-    @app(app_id="echo-multi", content_type=nextmv.InputFormat.MULTI_FILE)
+        return result_path
+
+    @app(
+        app_id="echo-multi",
+        run_configuration=nextmv.RunConfiguration(
+            format=nextmv.Format(
+                format_input=nextmv.FormatInput(input_type=nextmv.InputFormat.MULTI_FILE),
+                format_output=nextmv.FormatOutput(output_type=nextmv.OutputFormat.MULTI_FILE),
+            )
+        ),
+    )
     @needs(predecessors=[transform])
     @step
     def solve2(result: nextmv.cloud.RunResult):
@@ -57,51 +68,6 @@ class Flow(FlowSpec):
             full_file_name = os.path.join(result_path, file_name)
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, options.output)
-
-    # # >>>>
-
-    # @step
-    # def prepare(input: dict):
-    #     """Prepares the data."""
-    #     output = nextmv.Output(
-    #         output_format=nextmv.OutputFormat.MULTI_FILE,
-    #         solution_files=[nextmv.json_solution_file("echo", data=input)],
-    #     )
-    #     return output
-
-    # @app(app_id="echo-multi")
-    # @needs(predecessors=[prepare])
-    # @step
-    # def solve1():
-    #     """Runs a model."""
-    #     pass
-
-    # @app(app_id="echo-multi")
-    # @needs(predecessors=[solve1])
-    # @step
-    # def solve2():
-    #     """Runs another model."""
-    #     pass
-
-    # @app(app_id="echo-multi")
-    # @step
-    # def solve3():
-    #     """Runs another model."""
-    #     pass
-
-    # @needs(predecessors=[solve2, solve3])
-    # @step
-    # def enhance(result_solve2: nextmv.cloud.RunResult, result_solve3: nextmv.cloud.RunResult):
-    #     """Enhances the result."""
-    #     output = nextmv.Output(
-    #         output_format=nextmv.OutputFormat.MULTI_FILE,
-    #         solution_files=[
-    #             nextmv.json_solution_file("enhanced_from_solve2", data=result_solve2.data),
-    #             nextmv.json_solution_file("enhanced_from_solve3", data=result_solve3.data),
-    #         ],
-    #     )
-
-    #     return output
 
 
 def main():
