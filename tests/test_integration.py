@@ -94,6 +94,7 @@ class TestExample(unittest.TestCase):
         goldie.run_file_unittest(
             test=self,
             td=goldie.TestDefinition(
+                input_file=os.path.join(path, "multifile.json"),
                 extra_args=[("pipeline", os.path.join(path, "multifile.py"))],
             ),
             configuration=config,
