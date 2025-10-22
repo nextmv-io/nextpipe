@@ -6,10 +6,6 @@ import nextmv.cloud
 
 from nextpipe import FlowSpec, app, log, needs, step
 
-# TODO: remove debug helper
-os.environ["NEXTMV_API_KEY"] = os.getenv("NEXTMV_API_KEY_PROD")
-
-
 options = nextmv.Options(
     nextmv.Option("input", str, "inputs/", "Path to input file.", False),
     nextmv.Option("output", str, "outputs/", "Path to output file.", False),
