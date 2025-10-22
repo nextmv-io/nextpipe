@@ -90,22 +90,26 @@ class TestExample(unittest.TestCase):
             configuration=config,
         )
 
+        # MULTIFILE
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                extra_args=[("pipeline", os.path.join(path, "multifile.py"))],
+            ),
+            configuration=config,
+        )
+
         # APPAPP
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$echo.data.statistics.run.duration", value=0.123),
+            ],
+        )
         goldie.run_file_unittest(
             test=self,
             td=goldie.TestDefinition(
                 input_file=os.path.join(path, "appapp.json"),
                 extra_args=[("pipeline", os.path.join(path, "appapp.py"))],
-            ),
-            configuration=config,
-        )
-
-        # TYPEDIO
-        goldie.run_file_unittest(
-            test=self,
-            td=goldie.TestDefinition(
-                input_file=os.path.join(path, "typedio.json"),
-                extra_args=[("pipeline", os.path.join(path, "typedio.py"))],
             ),
             configuration=config,
         )

@@ -1,10 +1,24 @@
 {
-    "echo": {
-        "data": {
+  "echo": {
+    "data": {
+      "options": {},
+      "solution": {
+        "echo": {
+          "data": {
             "hello": "world!",
-            "prepared": true,
-            "enhanced": true
-        },
-        "args": []
-    }
+            "prepared": true
+          },
+          "args": []
+        }
+      },
+      "statistics": {
+        "run": {
+          "duration": 0.00012874603271484375
+        }
+      },
+      "assets": [],
+      "enhanced": true
+    },
+    "args": []
+  }
 }
