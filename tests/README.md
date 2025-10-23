@@ -12,6 +12,11 @@ cd apps/echo
 nextmv app create -a echo -n "Echo" || true
 nextmv app push -a echo
 cd ../..
+# Setup echo-multi app
+cd apps/echo-multi
+nextmv app create -a echo-multi -n "Echo Multi" || true
+nextmv app push -a echo-multi
+cd ../..
 ```
 
 Furthermore, subscribe to the following marketplace apps and name them as follows:

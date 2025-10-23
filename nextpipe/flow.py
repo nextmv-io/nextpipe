@@ -958,10 +958,15 @@ class Runner:
                 {  # We use the named arguments to pass the user arguments to the run function
                     "options": options,
                     "name": name,
-                    # Need to pass input directories for multi-file in separate argument
-                    "input_dir_path" if is_dir_mode else "input": input,
                 },
             )
+
+            # Prepare input argument. We need to use 'input_dir_path' when dealing with a
+            # directory input (e.g., multi-file input).
+            if is_dir_mode:
+                run_args[1]["input_dir_path"] = input
+            else:
+                run_args[1]["input"] = input
 
             # Apply run configuration if given.
             if app_step.run_configuration is not None:

@@ -10,7 +10,7 @@ from nextpipe import FlowSpec, app, needs, step
 from nextpipe.uplink import FlowDTO, FlowUpdateDTO, NodeDTO, StepDTO, UplinkClient
 
 # Add the parent directory to the sys.path to allow imports from the main package. This
-# means to help vs-code testing features.
+# is meant to help VS Code testing features.
 sys.path.append(os.path.dirname(sys.path[0]))
 
 
