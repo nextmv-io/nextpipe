@@ -5,10 +5,12 @@
     This example uses the [`echo` app](../tutorials/echo.md), make sure to complete
     that tutorial first.
 
-This example showcases how to use multi-file applications within a Nextpipe
-workflow. A multi-file application differs from a JSON-based application in that
-it accepts a directory of files as input and produces a directory of files as
-output.
+This example showcases how to use **multi-file** applications _within_ a
+Nextpipe workflow. A multi-file application differs from a JSON-based
+application in that it accepts a directory of files as input and produces a
+directory of files as output. Note that the workflow itself is also a multi-file
+application, however, this is a user choice (i.e., you could also create a
+JSON-based workflow that uses multi-file sub-applications).
 
 For demonstration purposes, we will use the simple [echo-multi application] as
 the sub-application, which echoes the input files as output files.

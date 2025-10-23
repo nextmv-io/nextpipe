@@ -12,6 +12,7 @@ nav:
           - The echo app: tutorials/echo.md
       - Examples:
           - Basic chained workflow: examples/basic-chained-workflow.md
+          - Multi-file workflow: examples/multifile-workflow.md
           - Fanout workflow: examples/fanout-workflow.md
           - Ensemble workflow: examples/ensemble-workflow.md
           - Complex workflow: examples/complex-workflow.md
