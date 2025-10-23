@@ -14,12 +14,16 @@ options = nextmv.Options(
 
 # >>> Workflow definition
 class Flow(FlowSpec):
+    # The first step receives the path to the input files directly (see main()) and
+    # automatically zips the directory and passes it to the 'echo-multi' sub-app.
     @app(app_id="echo-multi")
     @step
     def solve1():
         """Runs a multi-file model."""
         pass
 
+    # The second step receives the path to the output files from the first step. This path
+    # will point to a temporary directory containing the output files from the first step.
     @needs(predecessors=[solve1])
     @step
     def transform(result_path: str):
@@ -39,14 +43,19 @@ class Flow(FlowSpec):
 
         return result_path
 
+    # The third step receives the (modified) directory from the transform step and runs
+    # another multi-file app on it.
     @app(
         app_id="echo-multi",
+        # We specify the content type explicitly here. This is normally done via the app's
+        # manifest, but we can do it explicitly like this too.
         run_configuration=nextmv.RunConfiguration(
             format=nextmv.Format(
                 format_input=nextmv.FormatInput(input_type=nextmv.InputFormat.MULTI_FILE),
                 format_output=nextmv.FormatOutput(output_type=nextmv.OutputFormat.MULTI_FILE),
             )
         ),
+        full_result=True,
     )
     @needs(predecessors=[transform])
     @step
@@ -54,10 +63,15 @@ class Flow(FlowSpec):
         """Runs another multi-file model."""
         pass
 
+    # The final step receives the output from 'solve2' as a full result object (see
+    # 'full_result=True' above). In this case, the path to the output files is available
+    # via 'result.output'.
     @needs(predecessors=[solve2])
     @step
-    def prepare_output(result_path: str):
+    def prepare_output(result: nextmv.cloud.RunResult):
         """Transforms the result for the next step."""
+        # Extract the path to the output files.
+        result_path = result.output
         # Simply copy the files from the given directory to the expected output directory.
         os.makedirs(options.output, exist_ok=True)
         for file_name in os.listdir(result_path):
@@ -70,7 +84,8 @@ def main():
     # Run workflow (simply provide the path to the multi-file input)
     flow = Flow("DecisionFlow", options.input)
     flow.run()
-    # The last step of the flow already prepares the output, so no need to specify output here.
+    # The last step of the flow already prepares the output in the requested directory,
+    # so no need to do anything here anymore.
 
 
 if __name__ == "__main__":

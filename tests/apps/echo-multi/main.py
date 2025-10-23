@@ -8,7 +8,7 @@ import nextmv
 def main():
     options = nextmv.Options(
         nextmv.Option("input", str, "inputs/", "Path to input file.", False),
-        nextmv.Option("output", str, "outputs/", "Path to output file.", False),
+        nextmv.Option("output", str, "outputs/solutions/", "Path to output file.", False),
         nextmv.Option("duration", float, 1.0, "Runtime duration (in seconds).", False),
     )
 
