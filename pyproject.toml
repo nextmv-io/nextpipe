@@ -71,5 +71,5 @@ path = "nextpipe/__about__.py"
 [project.optional-dependencies]
 dev = [
     "ruff>=0.11.6",
-    "goldie>=0.1.7",
+    "goldie>=0.1.8",
 ]
