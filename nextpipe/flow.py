@@ -27,14 +27,16 @@ import base64
 import copy
 import inspect
 import io
+import os
 import random
+import tempfile
 import threading
 import time
 from importlib.metadata import version
 from itertools import product
 from typing import Any, Optional, Union
 
-from nextmv.cloud import Application, Client
+from nextmv.cloud import Application, Client, RunResult
 
 from . import config, decorators, graph, schema, threads, uplink, utils
 from .__about__ import __version__
@@ -907,6 +909,7 @@ class Runner:
         # Run the step
         if node.parent.definition.is_app():
             app_step: decorators.App = node.parent.definition.app
+
             # Prepare the input for the app
             # TODO: We only support one predecessor for app steps for now. This may
             # change in the future. We may want to support multiple predecessors for
@@ -923,11 +926,22 @@ class Runner:
                 # Merge the options from the app decorator with the options from the
                 # AppRunConfig. AppRunConfig options take precedence.
                 options = app_step.options | app_run_options
+            elif isinstance(inputs[0], RunResult):
+                # If the input is a RunResult, we use its output as input.
+                run_result: RunResult = inputs[0]
+                input = run_result.output
+                options = app_step.options
+                name = node.id
             else:
                 # If the input is not AppRunConfig, we use it directly.
                 input = inputs[0]
                 options = app_step.options
                 name = node.id
+
+            # Detect dir mode / multi-file direct input
+            is_dir_mode = False
+            if isinstance(input, str) and os.path.isdir(input):
+                is_dir_mode = True
 
             # Modify the polling options set for the step (by default or by the
             # user) so that the initial delay is randomized and the stopping
@@ -942,12 +956,21 @@ class Runner:
             run_args = (
                 [],  # No nameless arguments
                 {  # We use the named arguments to pass the user arguments to the run function
-                    "input": input,
-                    "run_options": options,
-                    "polling_options": polling_options,
+                    "options": options,
                     "name": name,
                 },
             )
+
+            # Prepare input argument. We need to use 'input_dir_path' when dealing with a
+            # directory input (e.g., multi-file input).
+            if is_dir_mode:
+                run_args[1]["input_dir_path"] = input
+            else:
+                run_args[1]["input"] = input
+
+            # Apply run configuration if given.
+            if app_step.run_configuration is not None:
+                run_args[1]["configuration"] = app_step.run_configuration
 
             # Prepare the application itself.
             app = Application(
@@ -957,18 +980,35 @@ class Runner:
             if app_step.instance_id is not None and app_step.instance_id != "":
                 app.default_instance_id = app_step.instance_id
 
-            # Run the application
-            result = app.new_run_with_result(
-                *run_args[0],
-                **run_args[1],
-            )
-            run_id = result.id
-            node.run_id = run_id
-            utils.log_internal(f"Finished app step {node.id} run, find it at {result.console_url}")
+            # We always supply an output directory path in case of implicit multi-file output
+            temp_dir = tempfile.mkdtemp(prefix="nextpipe_output_")
 
-            # Return result (do not unwrap if full result is requested)
+            # Run the application
+            try:
+                run_id = app.new_run(*run_args[0], **run_args[1])
+                console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
+                utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
+                result = app.run_result_with_polling(
+                    run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
+                )
+                node.run_id = run_id
+            finally:  # Make sure we clean up temp dir on failure too
+                # If the temp dir is empty, remove it
+                dir_result = False
+                if not os.listdir(temp_dir):
+                    os.rmdir(temp_dir)
+                else:
+                    dir_result = True
+
+            # Return result
+            #  - Do not unwrap if full result is requested
+            #  - If the output came in a directory, return the directory path
             if app_step.full_result:
+                if dir_result:
+                    result.output = temp_dir
                 return result
+            if dir_result:
+                return temp_dir
             return result.output
 
         else:

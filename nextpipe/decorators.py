@@ -50,6 +50,7 @@ from collections.abc import Callable
 from enum import Enum
 from functools import wraps
 
+import nextmv
 from nextmv import cloud
 from nextmv.deprecated import deprecated
 
@@ -772,10 +773,10 @@ class App:
         The ID of the instance to run.
     options : dict[str, Any]
         The options to pass to the application.
-    input_type : InputType
-        The type of input to pass to the application (JSON or FILES).
     full_result : bool
         Whether to return the full result including metadata.
+    run_configuration : nextmv.RunConfiguration
+        The configuration to apply when running the app.
     polling_options : Optional[cloud.PollingOptions]
         Options for polling for the results of the app run.
     """
@@ -788,6 +789,7 @@ class App:
         parameters: dict[str, typing.Any] = None,
         options: dict[str, typing.Any] = None,
         full_result: bool = False,
+        run_configuration: nextmv.RunConfiguration = None,
         polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
     ):
         """
@@ -799,15 +801,21 @@ class App:
             The ID of the Nextmv Application to run.
         instance_id : str, optional
             The ID of the instance to run. Default is defined by the app on Platform.
-        input_type : InputType, optional
-            The type of input to pass to the application, by default InputType.JSON.
         options : dict[str, Any], optional
             The options to pass to the application, by default None.
         full_result : bool, optional
             Whether to return the full result including metadata, by default False.
+        run_configuration : nextmv.RunConfiguration, optional
+            The configuration to apply when running the app, by default None.
         polling_options : Optional[cloud.PollingOptions], optional
             Options for polling for the results of the app run, by default _DEFAULT_POLLING_OPTIONS.
         """
+
+        if input_type:
+            deprecated(
+                "input_type",
+                "The 'input_type' argument is deprecated and will be removed in a future release.",
+            )
 
         # Make sure only one of options or parameters is used.
         if parameters and options:
@@ -824,6 +832,7 @@ class App:
         self.options = options if options else {}
         self.input_type = input_type
         self.full_result = full_result
+        self.run_configuration = run_configuration
         self.polling_options = polling_options
 
     def __repr__(self):
@@ -835,7 +844,7 @@ class App:
             A string representation of the app.
         """
 
-        return f"StepRun({self.app_id}, {self.instance_id}, {self.options}, {self.input_type}, {self.full_result})"
+        return f"StepRun({self.app_id}, {self.instance_id}, {self.options}, {self.full_result})"
 
 
 def app(
@@ -845,6 +854,7 @@ def app(
     options: dict[str, typing.Any] = None,
     input_type: InputType = InputType.JSON,
     full_result: bool = False,
+    run_configuration: nextmv.RunConfiguration = None,
     polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
 ):
     """
@@ -871,14 +881,13 @@ def app(
     options : dict[str, Any]
         The options to pass to the application. This is a dictionary of
         parameter names and values. The values must be JSON serializable.
-    input_type : InputType
-        The type of input to pass to the application. This can be either
-        JSON or FILES. Default is JSON.
     full_result : bool
         Whether to return the full result of the application run. If this is
         set to `True`, the full result (with metadata) will be returned. If
         this is set to `False`, only the output of the application will be
         returned.
+    run_configuration : nextmv.RunConfiguration
+        The configuration to apply when running the app.
     polling_options : Optional[cloud.PollingOptions]
         Options for polling for the results of the app run. This is used to
         configure the polling behavior, such as the timeout and backoff
@@ -924,6 +933,12 @@ def app(
     ```
     """
 
+    if input_type:
+        deprecated(
+            "input_type",
+            "The 'input_type' argument is deprecated and will be removed in a future release.",
+        )
+
     # Make sure only one of options or parameters is used.
     if parameters and options:
         raise ValueError("You can only use either 'parameters' or 'options', not both.")
@@ -950,6 +965,7 @@ def app(
             options=converted_options,
             input_type=input_type,
             full_result=full_result,
+            run_configuration=run_configuration,
             polling_options=polling_options,
         )
         wrapper.step.type = StepType.APP

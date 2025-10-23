@@ -1,8 +1,14 @@
+import os
+import sys
 import threading
 import time
 import unittest
 
 from nextpipe.threads import Job, Pool
+
+# Add the parent directory to the sys.path to allow imports from the main package. This
+# is meant to help VS Code testing features.
+sys.path.append(os.path.dirname(sys.path[0]))
 
 
 class TestLogger(unittest.TestCase):

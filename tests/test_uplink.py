@@ -1,4 +1,6 @@
+import os
 import random
+import sys
 import time
 import unittest
 
@@ -6,6 +8,10 @@ import nextmv.cloud
 
 from nextpipe import FlowSpec, app, needs, step
 from nextpipe.uplink import FlowDTO, FlowUpdateDTO, NodeDTO, StepDTO, UplinkClient
+
+# Add the parent directory to the sys.path to allow imports from the main package. This
+# is meant to help VS Code testing features.
+sys.path.append(os.path.dirname(sys.path[0]))
 
 
 class Flow(FlowSpec):

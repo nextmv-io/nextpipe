@@ -1,10 +1,15 @@
 import os
 import os.path
 import random
+import sys
 import unittest
 
 import goldie
 from nextmv import cloud
+
+# Add the parent directory to the sys.path to allow imports from the main package. This
+# is meant to help VS Code testing features.
+sys.path.append(os.path.dirname(sys.path[0]))
 
 # Get token for communication with platform
 API_KEY = os.getenv("NEXTMV_API_KEY_NEXTPIPE")
@@ -86,6 +91,45 @@ class TestExample(unittest.TestCase):
             td=goldie.TestDefinition(
                 input_file=os.path.join(path, "chain.json"),
                 extra_args=[("pipeline", os.path.join(path, "chain.py"))],
+            ),
+            configuration=config,
+        )
+
+        # MULTIFILE
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "multifile.json"),
+                extra_args=[("pipeline", os.path.join(path, "multifile.py"))],
+            ),
+            configuration=goldie.ConfigFileTest(
+                run_configuration=goldie.ConfigRun(
+                    # We simply run the script in this directory.
+                    cmd="python",
+                    args=["{pipeline}"],
+                    cwd=path,
+                    input_mode=goldie.InputMode.NONE,
+                    output_mode=goldie.OutputMode.NONE,
+                ),
+                comparison_configuration=goldie.ConfigComparison(
+                    # We do not compare any output here, but just make sure that the
+                    # pipeline runs without errors.
+                    comparison_type=goldie.ComparisonType.IGNORE,
+                ),
+            ),
+        )
+
+        # APPAPP
+        config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
+            replacements=[
+                goldie.JsonReplacement(path="$.echo.data.statistics.run.duration", value=0.123),
+            ],
+        )
+        goldie.run_file_unittest(
+            test=self,
+            td=goldie.TestDefinition(
+                input_file=os.path.join(path, "appapp.json"),
+                extra_args=[("pipeline", os.path.join(path, "appapp.py"))],
             ),
             configuration=config,
         )

@@ -70,8 +70,10 @@ class AppRunConfig:
 
     Parameters
     ----------
-    input : dict[str, Any], optional
-        Input data for the app, by default None.
+    input : Union[dict[str, Any], str, Any]
+        Input data for the app. A JSON app can take a dictionary, multi-file apps can take
+        a directory path as a string. Other types will be passed to the underlying Python
+        SDK as-is (e.g., nextmv.Input).
     options : Union[list[AppOption], dict[str, Any]], optional
         Options for running the app, by default empty. These can be provided as a list of
         `AppOption` instances, or, simply as a dictionary of key-value pairs.
@@ -88,8 +90,10 @@ class AppRunConfig:
     ... )
     """
 
-    input: dict[str, Any] = None
-    """Input for the app."""
+    input: Union[dict[str, Any], str, Any]
+    """Input for the app. A JSON app can take a dictionary, multi-file apps can take a
+    directory path as a string. Other types will be passed to the underlying Python SDK
+    as-is (e.g., nextmv.Input)."""
     options: Union[list[AppOption], dict[str, Any]] = field(default_factory=list)
     """Options for running the app."""
     name: Optional[str] = None
