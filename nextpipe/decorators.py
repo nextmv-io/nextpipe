@@ -844,7 +844,7 @@ class App:
             A string representation of the app.
         """
 
-        return f"StepRun({self.app_id}, {self.instance_id}, {self.options}, {self.input_type}, {self.full_result})"
+        return f"StepRun({self.app_id}, {self.instance_id}, {self.options}, {self.full_result})"
 
 
 def app(
