@@ -1,6 +1,12 @@
+import os
+import sys
 import unittest
 
 import nextpipe
+
+# Add the parent directory to the sys.path to allow imports from the main package. This
+# means to help vs-code testing features.
+sys.path.append(os.path.dirname(sys.path[0]))
 
 
 class TestLogger(unittest.TestCase):
