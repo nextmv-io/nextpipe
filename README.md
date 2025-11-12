@@ -38,7 +38,7 @@ modeling and execution. It provides first-class support for Workflows in the
 
 ## Installation
 
-The package is hosted on [PyPI][nextpipe-pypi]. Python `>=3.9` is required.
+The package is hosted on [PyPI][nextpipe-pypi]. Python `>=3.10` is required.
 
 Install via `pip`:
 
