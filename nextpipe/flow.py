@@ -34,7 +34,7 @@ import threading
 import time
 from importlib.metadata import version
 from itertools import product
-from typing import Any, Optional, Union
+from typing import Any
 
 from nextmv.cloud import Application, Client, RunResult
 
@@ -276,9 +276,9 @@ class FlowSpec:
         self,
         name: str,
         input: dict,
-        conf: Optional[config.Configuration] = None,
-        client: Optional[Client] = None,
-        uplink_config: Optional[uplink.UplinkConfig] = None,
+        conf: config.Configuration | None = None,
+        client: Client | None = None,
+        uplink_config: uplink.UplinkConfig | None = None,
     ):
         """
         Initialize a FlowSpec.
@@ -336,7 +336,7 @@ class FlowSpec:
 
         return f"Flow({self.name})"
 
-    def get_result(self, step: callable) -> Union[object, None]:
+    def get_result(self, step: callable) -> object | None:
         """
         Get the result of a step.
 
@@ -877,7 +877,7 @@ class Runner:
         self.uplink.submit_update(self.graph._to_uplink_dto())
 
     @staticmethod
-    def __run_step(node: FlowNode, inputs: list[object], client: Client) -> Union[list[object], object, None]:
+    def __run_step(node: FlowNode, inputs: list[object], client: Client) -> list[object] | object | None:
         """
         Execute a step with the given inputs.
 
@@ -1019,7 +1019,7 @@ class Runner:
                 output = node.parent.definition.function(*inputs)
             return output
 
-    def __create_job(self, node: FlowNode, inputs: Union[list[Any], Any]) -> threads.Job:
+    def __create_job(self, node: FlowNode, inputs: list[Any] | Any) -> threads.Job:
         """
         Create a job for executing a step.
 

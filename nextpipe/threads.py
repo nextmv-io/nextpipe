@@ -15,7 +15,7 @@ The module also provides a thread local storage variable for thread-specific dat
 
 import threading
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 DEFAULT_MAX_THREADS = 24
 """
@@ -98,7 +98,7 @@ class Job:
         target: Callable,
         start_callback: Callable,
         done_callback: Callable,
-        args: Optional[list] = None,
+        args: list | None = None,
         name: str = None,
         reference: Any = None,
     ):
