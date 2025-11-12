@@ -790,7 +790,7 @@ class App:
         options: dict[str, typing.Any] = None,
         full_result: bool = False,
         run_configuration: nextmv.RunConfiguration = None,
-        polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
+        polling_options: cloud.PollingOptions | None = _DEFAULT_POLLING_OPTIONS,
     ):
         """
         Initialize an App object.
@@ -855,7 +855,7 @@ def app(
     input_type: InputType = InputType.JSON,
     full_result: bool = False,
     run_configuration: nextmv.RunConfiguration = None,
-    polling_options: typing.Optional[cloud.PollingOptions] = _DEFAULT_POLLING_OPTIONS,
+    polling_options: cloud.PollingOptions | None = _DEFAULT_POLLING_OPTIONS,
 ):
     """
     Decorator to mark a step as a Nextmv Application (external application)

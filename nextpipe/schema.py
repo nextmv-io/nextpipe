@@ -12,7 +12,7 @@ AppRunConfig
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Union
+from typing import Any
 
 from dataclasses_json import dataclass_json
 
@@ -90,13 +90,13 @@ class AppRunConfig:
     ... )
     """
 
-    input: Union[dict[str, Any], str, Any]
+    input: dict[str, Any] | str | Any
     """Input for the app. A JSON app can take a dictionary, multi-file apps can take a
     directory path as a string. Other types will be passed to the underlying Python SDK
     as-is (e.g., nextmv.Input)."""
-    options: Union[list[AppOption], dict[str, Any]] = field(default_factory=list)
+    options: list[AppOption] | dict[str, Any] = field(default_factory=list)
     """Options for running the app."""
-    name: Optional[str] = None
+    name: str | None = None
     """Name for the run."""
 
     def get_options(self) -> dict[str, Any]:
