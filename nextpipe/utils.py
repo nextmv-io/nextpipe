@@ -142,7 +142,7 @@ def convert_to_string_values(input_dict: dict[str, Any], preserve_none: bool = F
     This utility is useful when working with configuration objects where
     string representation of values is required.
 
-    Note that this function will remove entries with `None` values  by default.
+    Note that this function will remove entries with `None` values by default.
 
     Parameters
     ----------
