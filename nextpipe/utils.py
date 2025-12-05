@@ -135,12 +135,14 @@ def wrap_func(function):
     return func_wrapper
 
 
-def convert_to_string_values(input_dict: dict[str, Any]) -> dict[str, str]:
+def convert_to_string_values(input_dict: dict[str, Any], preserve_none: bool = False) -> dict[str, str]:
     """
     Converts all values of the given dictionary to strings.
 
     This utility is useful when working with configuration objects where
     string representation of values is required.
+
+    Note that this function will remove entries with `None` values  by default.
 
     Parameters
     ----------
@@ -160,7 +162,7 @@ def convert_to_string_values(input_dict: dict[str, Any]) -> dict[str, str]:
     {'a': '1', 'b': '2.0', 'c': 'True'}
     """
 
-    return {key: str(value) for key, value in input_dict.items()}
+    return {key: str(value) for key, value in input_dict.items() if value is not None or preserve_none}
 
 
 def __is_running_in_notebook():
