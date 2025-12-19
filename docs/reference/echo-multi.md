@@ -82,8 +82,8 @@ Now that you have a valid Nextmv account and API key, let's create the
     ```
 
     Note that the application uses the [`nextmv`][nextmv-docs] library. This
-    library is a dependency of `nextpipe` and should be installed automatically
-    when you install `nextpipe`.
+    library is a dependency of Nextpipe and should be installed automatically
+    when you install Nextpipe.
 
     You may run the app locally to test it:
 

@@ -30,11 +30,11 @@ modeling and execution. It provides first-class support for Workflows in the
 [Nextmv Platform][nextmv].
 
 > [!IMPORTANT]  
-> Please note that `nextpipe` is provided as _source-available_ software
+> Please note that Nextpipe is provided as _source-available_ software
 > (not _open-source_). For further information, please refer to the
 > [LICENSE](./LICENSE.md) file.
 
-📖 To learn more about the `nextpipe`, visit the [docs][docs].
+📖 To learn more about Nextpipe, visit the [docs][docs].
 
 ## Installation
 

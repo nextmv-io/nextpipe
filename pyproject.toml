@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.31.0",
-    "nextmv>=0.29.4",
+    "nextmv>=0.37.2",
     "dataclasses-json>=0.6.7",
 ]
 description = "Framework for Decision Pipeline modeling and execution"

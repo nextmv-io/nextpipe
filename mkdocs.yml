@@ -8,8 +8,7 @@ nav:
   - Home:
       - Overview & installation: index.md
       - Tutorials:
-          - Getting started: tutorials/getting-started.md
-          - The echo app: tutorials/echo.md
+          - Orchestrate multiple models: tutorials/orchestrate-multiple-models.md
       - Examples:
           - Basic chained workflow: examples/basic-chained-workflow.md
           - Multi-file workflow: examples/multifile-workflow.md
@@ -18,6 +17,8 @@ nav:
           - Complex workflow: examples/complex-workflow.md
           - Complex workflow with CSV: examples/complex-workflow-csv.md
       - Reference:
+          - The echo app: reference/echo.md
+          - The echo-multi app: reference/echo-multi.md
           - config.py: reference/config.md
           - decorators.py: reference/decorators.md
           - flow.py: reference/flow.md
