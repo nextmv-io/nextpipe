@@ -2,8 +2,8 @@
 
 !!! tip
 
-    This example uses the [`echo` app](../tutorials/echo.md), make sure to complete
-    that tutorial first.
+    This example uses the [`echo` app](../reference/echo.md), make sure to read
+    that reference documentation first.
 
 This is a basic example of a three-step, sequential workflow. It demonstrates
 the basic structure of a workflow, which consists of steps being chained
@@ -105,7 +105,7 @@ $ echo '{"hello": "world!"}' | python main.py
 }
 ```
 
-As you can observe from the output, `nextpipe` automatically generates a
+As you can observe from the output, Nextpipe automatically generates a
 Mermaid diagram to visualize the flow structure.
 
 ```mermaid
@@ -117,7 +117,8 @@ graph LR
   enhance(enhance)
 ```
 
-The diagram can be viewed in a browser by following the [link][mermaid-link]
-provided in the output. The diagram shows the flow of data between the steps.
+The diagram can be viewed in a browser by following the [Mermaid
+link][mermaid-link] provided in the output. The diagram shows the flow of data
+between the steps.
 
 [mermaid-link]: https://mermaid.ink/svg/Z3JhcGggTFIKICBwcmVwYXJlKHByZXBhcmUpCiAgcHJlcGFyZSAtLT4gc29sdmUKICBzb2x2ZShzb2x2ZSkKICBzb2x2ZSAtLT4gZW5oYW5jZQogIGVuaGFuY2UoZW5oYW5jZSkK?theme=dark

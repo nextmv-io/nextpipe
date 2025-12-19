@@ -2,8 +2,8 @@
 
 !!! tip
 
-    This example uses the [`echo` app](../tutorials/echo.md), make sure to complete
-    that tutorial first.
+    This example uses the [`echo` app](../reference/echo.md), make sure to read
+    that reference documentation first.
 
 This is a more advanced example demonstrating dynamic fanout and joining of
 results. This example shows how to create multiple copies of the input data,
