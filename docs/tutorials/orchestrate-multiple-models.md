@@ -48,7 +48,7 @@ Let’s dive right in 🤿.
     executes, feel free to skip this step.
 
 The decision workflow is composed of one, or more, executables that solve
-decision problems. Decision workflows are typically lighweight, meaning that
+decision problems. Decision workflows are typically lightweight, meaning that
 they are focused on the orchestration of decision models, and not on the models
 themselves.
 

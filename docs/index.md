@@ -51,7 +51,7 @@ Nextpipe allows you to define complex decision workflows with multiple steps,
 manage dependencies between these steps, and integrate with external
 applications and solvers.
 
-Decision workflows are typically lighweight, meaning that they are focused on
+Decision workflows are typically lightweight, meaning that they are focused on
 the orchestration of decision models, and not on the models themselves. A bad
 practice would be to implement all business logic into the workflow
 application.
