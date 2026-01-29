@@ -51,7 +51,6 @@ from enum import Enum
 from functools import wraps
 
 import nextmv
-from nextmv import cloud
 from nextmv.deprecated import deprecated
 
 from . import utils
@@ -749,15 +748,6 @@ def join(f: Callable = None):
     return decorator
 
 
-_DEFAULT_POLLING_OPTIONS: cloud.PollingOptions = cloud.PollingOptions()
-"""Default polling options to use when polling for a run result.
-
-This variable defines the default polling options used by the `app` decorator
-when waiting for the results of a Nextmv Application run. It configures behavior
-such as the timeout and backoff strategy.
-"""
-
-
 class App:
     """
     Represents an external application step.
@@ -777,7 +767,7 @@ class App:
         Whether to return the full result including metadata.
     run_configuration : nextmv.RunConfiguration
         The configuration to apply when running the app.
-    polling_options : Optional[cloud.PollingOptions]
+    polling_options : Optional[nextmv.PollingOptions]
         Options for polling for the results of the app run.
     """
 
@@ -790,7 +780,7 @@ class App:
         options: dict[str, typing.Any] = None,
         full_result: bool = False,
         run_configuration: nextmv.RunConfiguration = None,
-        polling_options: cloud.PollingOptions | None = _DEFAULT_POLLING_OPTIONS,
+        polling_options: nextmv.PollingOptions | None = nextmv.DEFAULT_POLLING_OPTIONS,
     ):
         """
         Initialize an App object.
@@ -807,7 +797,7 @@ class App:
             Whether to return the full result including metadata, by default False.
         run_configuration : nextmv.RunConfiguration, optional
             The configuration to apply when running the app, by default None.
-        polling_options : Optional[cloud.PollingOptions], optional
+        polling_options : Optional[nextmv.PollingOptions], optional
             Options for polling for the results of the app run, by default _DEFAULT_POLLING_OPTIONS.
         """
 
@@ -855,7 +845,7 @@ def app(
     input_type: InputType = None,
     full_result: bool = False,
     run_configuration: nextmv.RunConfiguration = None,
-    polling_options: cloud.PollingOptions | None = _DEFAULT_POLLING_OPTIONS,
+    polling_options: nextmv.PollingOptions | None = nextmv.DEFAULT_POLLING_OPTIONS,
 ):
     """
     Decorator to mark a step as a Nextmv Application (external application)
@@ -888,7 +878,7 @@ def app(
         returned.
     run_configuration : nextmv.RunConfiguration
         The configuration to apply when running the app.
-    polling_options : Optional[cloud.PollingOptions]
+    polling_options : Optional[nextmv.PollingOptions]
         Options for polling for the results of the app run. This is used to
         configure the polling behavior, such as the timeout and backoff
         options. Default (or when undefined) is the predefined options in the

@@ -36,7 +36,8 @@ from importlib.metadata import version
 from itertools import product
 from typing import Any
 
-from nextmv.cloud import Application, Client, RunResult
+import nextmv
+from nextmv.cloud import Application, Client
 
 from . import config, decorators, graph, schema, threads, uplink, utils
 from .__about__ import __version__
@@ -926,9 +927,9 @@ class Runner:
                 # Merge the options from the app decorator with the options from the
                 # AppRunConfig. AppRunConfig options take precedence.
                 options = app_step.options | app_run_options
-            elif isinstance(inputs[0], RunResult):
+            elif isinstance(inputs[0], nextmv.RunResult):
                 # If the input is a RunResult, we use its output as input.
-                run_result: RunResult = inputs[0]
+                run_result: nextmv.RunResult = inputs[0]
                 input = run_result.output
                 options = app_step.options
                 name = node.id

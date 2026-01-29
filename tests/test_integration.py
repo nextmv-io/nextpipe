@@ -5,6 +5,7 @@ import sys
 import unittest
 
 import goldie
+import nextmv
 from nextmv import cloud
 
 # Add the parent directory to the sys.path to allow imports from the main package. This
@@ -50,7 +51,7 @@ class TestPlatform(unittest.TestCase):
 
             # Run the app
             r = random.randint(0, 100)
-            polling_opts = cloud.PollingOptions(max_tries=500, max_duration=240)
+            polling_opts = nextmv.PollingOptions(max_tries=500, max_duration=240)
             result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
             self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
             self.assertEqual(result.output["echo"]["data"]["enhanced"], True)
