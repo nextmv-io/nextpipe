@@ -37,7 +37,7 @@ class TestPlatform(unittest.TestCase):
             self.assertEqual(app.id, APP_ID)
 
             # Check if app is created
-            app = cloud.Application(CLIENT, APP_ID)
+            app = cloud.Application(client=CLIENT, id=APP_ID)
             self.assertIsNotNone(app)
             self.assertEqual(app.id, APP_ID)
 
