@@ -989,10 +989,10 @@ class Runner:
                 run_id = app.new_run(*run_args[0], **run_args[1])
                 console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
                 utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
+                node.run_id = run_id
                 result = app.run_result_with_polling(
                     run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
                 )
-                node.run_id = run_id
             finally:  # Make sure we clean up temp dir on failure too
                 # If the temp dir is empty, remove it
                 dir_result = False
