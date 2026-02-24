@@ -878,7 +878,12 @@ class Runner:
         self.uplink.submit_update(self.graph._to_uplink_dto())
 
     @staticmethod
-    def __run_step(node: FlowNode, inputs: list[object], client: Client) -> list[object] | object | None:
+    def __run_step(
+        node: FlowNode,
+        inputs: list[object],
+        client: Client,
+        update_dag: callable,
+    ) -> list[object] | object | None:
         """
         Execute a step with the given inputs.
 
@@ -989,10 +994,11 @@ class Runner:
                 run_id = app.new_run(*run_args[0], **run_args[1])
                 console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
                 utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
+                node.run_id = run_id
+                update_dag()  # Update the node with the run_id before we start polling for results
                 result = app.run_result_with_polling(
                     run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
                 )
-                node.run_id = run_id
             finally:  # Make sure we clean up temp dir on failure too
                 # If the temp dir is empty, remove it
                 dir_result = False
@@ -1044,7 +1050,12 @@ class Runner:
             target=self.__run_step,
             start_callback=self.__node_start_callback,
             done_callback=self.__node_done_callback,
-            args=(node, inputs, self.spec.client),
+            args=(
+                node,
+                inputs,
+                self.spec.client,
+                lambda: self.uplink.submit_update(self.graph._to_uplink_dto()),
+            ),
             name=utils.THREAD_NAME_PREFIX + node.id,
             reference=node,
         )
