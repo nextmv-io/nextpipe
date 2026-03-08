@@ -29,6 +29,7 @@ import inspect
 import io
 import os
 import random
+import shutil
 import tempfile
 import threading
 import time
@@ -991,14 +992,24 @@ class Runner:
 
             # Run the application
             try:
-                run_id = app.new_run(*run_args[0], **run_args[1])
-                console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
-                utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
-                node.run_id = run_id
-                update_dag()  # Update the node with the run_id before we start polling for results
-                result = app.run_result_with_polling(
-                    run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
-                )
+                if app_step.bypass_result is None:
+                    run_id = app.new_run(*run_args[0], **run_args[1])
+                    console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
+                    utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
+                    node.run_id = run_id
+                    update_dag()  # Update the node with the run_id before we start polling for results
+                    result = app.run_result_with_polling(
+                        run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
+                    )
+                else:
+                    utils.log_internal(f"Bypassing app step {node.id} run, using bypass result")
+                    # If the user supplied a bypass result, we need to write it to the temp dir if it's in dir mode
+                    if isinstance(app_step.bypass_result, str) and os.path.isdir(app_step.bypass_result):
+                        # If the bypass result is a directory, we copy its contents to the temp dir
+                        for filename in os.listdir(app_step.bypass_result):
+                            shutil.copy(os.path.join(app_step.bypass_result, filename), temp_dir)
+                    else:
+                        result = app_step.bypass_result
             finally:  # Make sure we clean up temp dir on failure too
                 # If the temp dir is empty, remove it
                 dir_result = False

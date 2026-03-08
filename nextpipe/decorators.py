@@ -781,6 +781,7 @@ class App:
         full_result: bool = False,
         run_configuration: nextmv.RunConfiguration = None,
         polling_options: nextmv.PollingOptions | None = nextmv.DEFAULT_POLLING_OPTIONS,
+        bypass_result: typing.Any = None,
     ):
         """
         Initialize an App object.
@@ -799,6 +800,9 @@ class App:
             The configuration to apply when running the app, by default None.
         polling_options : Optional[nextmv.PollingOptions], optional
             Options for polling for the results of the app run, by default _DEFAULT_POLLING_OPTIONS.
+        bypass_result : typing.Any, optional
+            A value that can be provided to bypass the actual execution of the app.
+            This is mainly used for testing purposes, by default None.
         """
 
         if input_type:
@@ -824,6 +828,7 @@ class App:
         self.full_result = full_result
         self.run_configuration = run_configuration
         self.polling_options = polling_options
+        self.bypass_result = bypass_result
 
     def __repr__(self):
         """Return a string representation of the app.
@@ -846,6 +851,7 @@ def app(
     full_result: bool = False,
     run_configuration: nextmv.RunConfiguration = None,
     polling_options: nextmv.PollingOptions | None = nextmv.DEFAULT_POLLING_OPTIONS,
+    bypass_result: typing.Any = None,
 ):
     """
     Decorator to mark a step as a Nextmv Application (external application)
@@ -885,6 +891,9 @@ def app(
         class itself. Please note that the `.initial_delay` attribute will be
         overridden internally, as a strategy to stagger multiple parallel runs
         and avoid overloading the Platform.
+    bypass_result : typing.Any, optional
+        A value that can be provided to bypass the actual execution of the app.
+        This is mainly used for testing purposes, by default None.
 
     Example
     -------
@@ -957,6 +966,7 @@ def app(
             full_result=full_result,
             run_configuration=run_configuration,
             polling_options=polling_options,
+            bypass_result=bypass_result,
         )
         wrapper.step.type = StepType.APP
 
