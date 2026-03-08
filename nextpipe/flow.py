@@ -1003,38 +1003,36 @@ class Runner:
                     )
                 else:
                     utils.log_internal(f"Bypassing app step {node.id} run, using bypass result")
+                    # We wrap the bypass result in a dummy RunResult to ensure consistent behavior.
+                    result = nextmv.RunResult(
+                        id="bypassed-run",
+                        name="bypassed-run",
+                        description="This run was bypassed using a user-supplied result.",
+                        user_email="unavailable",
+                        metadata=nextmv.Metadata(
+                            application_id="unavailable",
+                            application_instance_id="unavailable",
+                            application_version_id="unavailable",
+                            created_at="unavailable",
+                            duration="unavailable",
+                            error="unavailable",
+                            input_size=0.0,
+                            output_size=0.0,
+                            format=nextmv.Format(
+                                format_input=nextmv.FormatInput(
+                                    input_type=nextmv.InputFormat.MULTI_FILE
+                                    if is_dir_mode
+                                    else nextmv.InputFormat.JSON,
+                                ),
+                            ),
+                            status_v2=nextmv.StatusV2.succeeded,
+                        ),
+                        output=app_step.bypass_result,
+                    )
                     # If the user supplied a bypass result, we need to write it to the temp dir if it's in dir mode
                     if isinstance(app_step.bypass_result, str) and os.path.isdir(app_step.bypass_result):
-                        # If the bypass result is a directory, we copy its contents to the temp dir
                         for filename in os.listdir(app_step.bypass_result):
                             shutil.copy(os.path.join(app_step.bypass_result, filename), temp_dir)
-                    else:
-                        # We wrap the bypass result in a dummy RunResult to ensure consistent behavior.
-                        result = nextmv.RunResult(
-                            id="bypassed_run",
-                            name="bypassed_run",
-                            description="This run was bypassed using a user-supplied result.",
-                            user_email="unavailable",
-                            metadata=nextmv.Metadata(
-                                application_id="unavailable",
-                                application_instance_id="unavailable",
-                                application_version_id="unavailable",
-                                created_at="unavailable",
-                                duration="unavailable",
-                                error="unavailable",
-                                input_size=0.0,
-                                output_size=0.0,
-                                format=nextmv.Format(
-                                    format_input=nextmv.FormatInput(
-                                        input_type=nextmv.InputFormat.MULTI_FILE
-                                        if is_dir_mode
-                                        else nextmv.InputFormat.JSON,
-                                    ),
-                                ),
-                                status_v2=nextmv.StatusV2.succeeded,
-                            ),
-                            output=app_step.bypass_result,
-                        )
             finally:  # Make sure we clean up temp dir on failure too
                 # If the temp dir is empty, remove it
                 dir_result = False
