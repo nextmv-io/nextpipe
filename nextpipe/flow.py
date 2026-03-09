@@ -947,7 +947,10 @@ class Runner:
                 # If the input is AppRunConfig, unwrap it.
                 app_run_config: schema.AppRunConfig = inputs[0]
                 input = app_run_config.input
-                name = app_run_config.name if app_run_config.name else node.id
+                if app_run_config.name:
+                    app_run_name = app_run_config.name
+                if app_run_config.description:
+                    app_run_description = app_run_config.description
                 app_run_options = app_run_config.get_options()
                 # Merge the options from the app decorator with the options from the
                 # AppRunConfig. AppRunConfig options take precedence.
@@ -957,12 +960,10 @@ class Runner:
                 run_result: nextmv.RunResult = inputs[0]
                 input = run_result.output
                 options = app_step.options
-                name = node.id
             else:
                 # If the input is not AppRunConfig, we use it directly.
                 input = inputs[0]
                 options = app_step.options
-                name = node.id
 
             # Detect dir mode / multi-file direct input
             is_dir_mode = False
@@ -983,7 +984,8 @@ class Runner:
                 [],  # No nameless arguments
                 {  # We use the named arguments to pass the user arguments to the run function
                     "options": options,
-                    "name": name,
+                    "name": app_run_name,
+                    "description": app_run_description,
                 },
             )
 
