@@ -1029,7 +1029,7 @@ class Runner:
                         app.run_logs_with_polling(
                             run_id=run_id,
                             verbose=True,
-                            log_func=lambda msg: utils.log(message=msg, step_name=node.id),
+                            log_func=lambda msg: utils.log(message=msg.log, step_name=node.id),
                         )
 
                     # Wait for run to finish and get the result.
