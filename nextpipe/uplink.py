@@ -27,7 +27,6 @@ ExcludeIfNone
 """
 
 import datetime
-import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -35,6 +34,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from nextmv.cloud import Client
 
+from nextpipe.constants import __get_run_info
 from nextpipe.utils import log_internal
 
 FAILED_UPDATES_THRESHOLD = 10
@@ -45,12 +45,6 @@ UPDATE_INTERVAL = 5
 
 MAX_DOCS_LENGTH = 1000
 """Maximum length for documentation strings sent to the platform."""
-
-ENV_APP_ID = "NEXTMV_APP_ID"
-"""Environment variable name for the application ID."""
-
-ENV_RUN_ID = "NEXTMV_RUN_ID"
-"""Environment variable name for the run ID."""
 
 
 def ExcludeIfNone(value):
@@ -278,10 +272,8 @@ class UplinkClient:
 
         if config is None:
             # Load config from environment
-            config = UplinkConfig(
-                application_id=os.environ.get(ENV_APP_ID),
-                run_id=os.environ.get(ENV_RUN_ID),
-            )
+            app_id, run_id = __get_run_info()
+            config = UplinkConfig(application_id=app_id, run_id=run_id)
         self.config = config
         self.inactive = False
         if not self.config.application_id or not self.config.run_id:

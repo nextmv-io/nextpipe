@@ -40,6 +40,8 @@ from typing import Any
 import nextmv
 from nextmv.cloud import Application, Client
 
+from nextpipe.constants import __get_run_info
+
 from . import config, decorators, graph, schema, threads, uplink, utils
 from .__about__ import __version__
 
@@ -862,9 +864,9 @@ class Runner:
         """
 
         reference: FlowNode = job.reference
-        reference.status = STATUS_SUCCEEDED if job.error is None else STATUS_FAILED
+        failed = job.error is not None or reference.error is not None
+        reference.status = STATUS_SUCCEEDED if not failed else STATUS_FAILED
         reference.result = job.result
-        reference.error = job.error
         # Check if the job failed and mark the flow as failed if it did
         with self.lock_fail:
             if job.error is not None and not self.fail:
@@ -877,6 +879,20 @@ class Runner:
                 reference.parent.done = True
         # Inform the platform about the node update
         self.uplink.submit_update(self.graph._to_uplink_dto())
+
+    @staticmethod
+    def __determine_sub_run_info(app_step_id: str, step_name: str) -> tuple[str, str]:
+        """
+        Determine name and description to use for sub-runs.
+        """
+        wf_app_id, wf_run_id = __get_run_info()
+        wf_app_id = wf_app_id or app_step_id  # Fallback if dynamic detection fails
+        wf_run_id = wf_run_id or "local"  # Use "local" for non-platform runs
+        step_name = step_name[:50]  # Truncate step name to 50 chars to keep overall name within limits
+        name = f"Nextpipe step {step_name} ({wf_app_id}/{wf_run_id})"
+        name = name[:128]  # Truncate to 128 chars to comply with platform limits
+        description = f"This run was started by the nextpipe parent: {wf_app_id} (run-id: {wf_run_id})"
+        return name, description
 
     @staticmethod
     def __run_step(
@@ -916,6 +932,9 @@ class Runner:
         # Run the step
         if node.parent.definition.is_app():
             app_step: decorators.App = node.parent.definition.app
+
+            # Try to detect platform run context.
+            app_run_name, app_run_description = Runner.__determine_sub_run_info(app_step.app_id, node.id)
 
             # Prepare the input for the app
             # TODO: We only support one predecessor for app steps for now. This may
@@ -1040,6 +1059,9 @@ class Runner:
                     os.rmdir(temp_dir)
                 else:
                     dir_result = True
+
+            # Emit result status to DAG
+            node.error = result.metadata.error
 
             # Return result
             #  - Do not unwrap if full result is requested
