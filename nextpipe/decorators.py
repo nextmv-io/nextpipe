@@ -769,6 +769,11 @@ class App:
         The configuration to apply when running the app.
     polling_options : Optional[nextmv.PollingOptions]
         Options for polling for the results of the app run.
+    bypass_result : typing.Any
+        A value that can be provided to bypass the actual execution of the app.
+    emit_live_logs : bool
+        Whether to emit live logs from the application run. If set to `True`, logs from
+        the sub-run will be relayed to the workflow.
     """
 
     def __init__(
@@ -782,6 +787,7 @@ class App:
         run_configuration: nextmv.RunConfiguration = None,
         polling_options: nextmv.PollingOptions | None = nextmv.DEFAULT_POLLING_OPTIONS,
         bypass_result: typing.Any = None,
+        emit_live_logs: bool = False,
     ):
         """
         Initialize an App object.
@@ -803,6 +809,9 @@ class App:
         bypass_result : typing.Any, optional
             A value that can be provided to bypass the actual execution of the app.
             This is mainly used for testing purposes, by default None.
+        emit_live_logs : bool, optional
+            Whether to emit live logs from the application run. If set to `True`, logs
+            from the sub-run will be relayed to the workflow. Default is False.
         """
 
         if input_type:
@@ -829,6 +838,7 @@ class App:
         self.run_configuration = run_configuration
         self.polling_options = polling_options
         self.bypass_result = bypass_result
+        self.emit_live_logs = emit_live_logs
 
     def __repr__(self):
         """Return a string representation of the app.
@@ -852,6 +862,7 @@ def app(
     run_configuration: nextmv.RunConfiguration = None,
     polling_options: nextmv.PollingOptions | None = nextmv.DEFAULT_POLLING_OPTIONS,
     bypass_result: typing.Any = None,
+    emit_live_logs: bool = False,
 ):
     """
     Decorator to mark a step as a Nextmv Application (external application)
@@ -894,6 +905,9 @@ def app(
     bypass_result : typing.Any, optional
         A value that can be provided to bypass the actual execution of the app.
         This is mainly used for testing purposes, by default None.
+    emit_live_logs : bool
+        Whether to emit live logs from the application run. If set to `True`, logs from
+        the sub-run will be relayed to the workflow.
 
     Example
     -------
@@ -967,6 +981,7 @@ def app(
             run_configuration=run_configuration,
             polling_options=polling_options,
             bypass_result=bypass_result,
+            emit_live_logs=emit_live_logs,
         )
         wrapper.step.type = StepType.APP
 

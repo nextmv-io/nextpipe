@@ -1019,6 +1019,12 @@ class Runner:
                     utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
                     node.run_id = run_id
                     update_dag()  # Update the node with the run_id before we start polling for results
+                    if app_step.emit_live_logs:
+                        utils.log_internal(f"Emitting live logs for app step {node.id} ...")
+                        app.run_logs_with_polling(
+                            run_id=run_id,
+                            log_func=lambda msg: utils.log(message=msg, step_name=node.id),
+                        )
                     result = app.run_result_with_polling(
                         run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
                     )

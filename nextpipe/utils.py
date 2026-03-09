@@ -46,7 +46,10 @@ def __get_step_name() -> str:
     return "main"
 
 
-def log(message: str) -> None:
+def log(
+    message: str,
+    step_name: str | None = None,
+) -> None:
     """
     Logs a message using stderr. Furthermore, prepends the name of the calling function if it is a step.
 
@@ -62,6 +65,9 @@ def log(message: str) -> None:
     ----------
     message : str
         The message to log.
+    step_name : str, optional
+        The name of the step to include in the log message. If not provided, it will
+        attempt to determine it automatically.
 
     Examples
     --------
@@ -72,7 +78,7 @@ def log(message: str) -> None:
     >>> # [step_name] Processing data
     """
 
-    step_name = __get_step_name()
+    step_name = step_name or __get_step_name()
     if step_name:
         print(f"[{step_name}] {message}", file=sys.stderr)
     else:
