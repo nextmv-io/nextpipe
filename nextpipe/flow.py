@@ -29,6 +29,7 @@ import datetime
 import inspect
 import io
 import os
+import pathlib
 import random
 import shutil
 import tempfile
@@ -1066,8 +1067,14 @@ class Runner:
 
                     # If the user supplied a bypass result, we need to write it to the temp dir if it's in dir mode
                     if isinstance(app_step.bypass_result, str) and os.path.isdir(app_step.bypass_result):
-                        for filename in os.listdir(app_step.bypass_result):
-                            shutil.copy(os.path.join(app_step.bypass_result, filename), temp_dir)
+                        src = pathlib.Path(app_step.bypass_result)
+                        dst = pathlib.Path(temp_dir)
+                        for item in src.iterdir():
+                            if item.is_file():
+                                shutil.copy2(item, dst / item.name)
+                            elif item.is_dir():
+                                shutil.copytree(item, dst / item.name)
+
             finally:  # Make sure we clean up temp dir on failure too
                 # If the temp dir is empty, remove it
                 dir_result = False
