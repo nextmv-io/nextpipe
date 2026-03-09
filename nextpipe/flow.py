@@ -1015,22 +1015,28 @@ class Runner:
             # Run the application
             try:
                 if app_step.bypass_result is None:
+                    # Start the run.
                     run_id = app.new_run(*run_args[0], **run_args[1])
                     console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
                     utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
                     node.run_id = run_id
                     update_dag()  # Update the node with the run_id before we start polling for results
+
+                    # Emit live logs if requested.
                     if app_step.emit_live_logs:
                         utils.log_internal(f"Emitting live logs for app step {node.id} ...")
                         app.run_logs_with_polling(
                             run_id=run_id,
                             log_func=lambda msg: utils.log(message=msg, step_name=node.id),
                         )
+
+                    # Wait for run to finish and get the result.
                     result = app.run_result_with_polling(
                         run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
                     )
                 else:
                     utils.log_internal(f"Bypassing app step {node.id} run, using bypass result")
+
                     # We wrap the bypass result in a dummy RunResult to ensure consistent behavior.
                     result = nextmv.RunResult(
                         id="bypassed-run",
@@ -1042,7 +1048,7 @@ class Runner:
                             application_instance_id="unavailable",
                             application_version_id="unavailable",
                             created_at=datetime.datetime.now(),
-                            duration=datetime.timedelta(seconds=0),
+                            duration=0.0,
                             error="unavailable",
                             input_size=0.0,
                             output_size=0.0,
@@ -1055,8 +1061,9 @@ class Runner:
                             ),
                             status_v2=nextmv.StatusV2.succeeded,
                         ),
-                        output=app_step.bypass_result,
                     )
+                    result.output = app_step.bypass_result
+
                     # If the user supplied a bypass result, we need to write it to the temp dir if it's in dir mode
                     if isinstance(app_step.bypass_result, str) and os.path.isdir(app_step.bypass_result):
                         for filename in os.listdir(app_step.bypass_result):
