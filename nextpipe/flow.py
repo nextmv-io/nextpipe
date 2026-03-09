@@ -25,6 +25,7 @@ The module also defines status constants used throughout pipeline execution.
 import ast
 import base64
 import copy
+import datetime
 import inspect
 import io
 import os
@@ -1040,8 +1041,8 @@ class Runner:
                             application_id="unavailable",
                             application_instance_id="unavailable",
                             application_version_id="unavailable",
-                            created_at="unavailable",
-                            duration="unavailable",
+                            created_at=datetime.datetime.now(),
+                            duration=datetime.timedelta(seconds=0),
                             error="unavailable",
                             input_size=0.0,
                             output_size=0.0,
