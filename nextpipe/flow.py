@@ -1028,6 +1028,7 @@ class Runner:
                         utils.log_internal(f"Emitting live logs for app step {node.id} ...")
                         app.run_logs_with_polling(
                             run_id=run_id,
+                            verbose=True,
                             log_func=lambda msg: utils.log(message=msg, step_name=node.id),
                         )
 
