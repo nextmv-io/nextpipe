@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from nextmv.cloud import Client
 
-from nextpipe.constants import __get_run_info
+from nextpipe.constants import _get_run_info
 from nextpipe.utils import log_internal
 
 FAILED_UPDATES_THRESHOLD = 10
@@ -272,7 +272,7 @@ class UplinkClient:
 
         if config is None:
             # Load config from environment
-            app_id, run_id = __get_run_info()
+            app_id, run_id = _get_run_info()
             config = UplinkConfig(application_id=app_id, run_id=run_id)
         self.config = config
         self.inactive = False

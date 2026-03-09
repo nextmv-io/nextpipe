@@ -40,7 +40,7 @@ from typing import Any
 import nextmv
 from nextmv.cloud import Application, Client
 
-from nextpipe.constants import __get_run_info
+from nextpipe.constants import _get_run_info
 
 from . import config, decorators, graph, schema, threads, uplink, utils
 from .__about__ import __version__
@@ -885,7 +885,7 @@ class Runner:
         """
         Determine name and description to use for sub-runs.
         """
-        wf_app_id, wf_run_id = __get_run_info()
+        wf_app_id, wf_run_id = _get_run_info()
         wf_app_id = wf_app_id or app_step_id  # Fallback if dynamic detection fails
         wf_run_id = wf_run_id or "local"  # Use "local" for non-platform runs
         step_name = step_name[:50]  # Truncate step name to 50 chars to keep overall name within limits
