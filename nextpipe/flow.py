@@ -866,12 +866,12 @@ class Runner:
         """
 
         reference: FlowNode = job.reference
-        failed = job.error is not None or reference.error is not None
+        failed = job.error or reference.error
         reference.status = STATUS_SUCCEEDED if not failed else STATUS_FAILED
         reference.result = job.result
         # Check if the job failed and mark the flow as failed if it did
         with self.lock_fail:
-            if job.error is not None and not self.fail:
+            if job.error and not self.fail:
                 self.fail = True
                 self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
         # Mark the node as done (and its parent if all nodes are done)
