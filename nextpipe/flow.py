@@ -1051,7 +1051,7 @@ class Runner:
                             application_version_id="unavailable",
                             created_at=datetime.datetime.now(),
                             duration=0.0,
-                            error="unavailable",
+                            error="",
                             input_size=0.0,
                             output_size=0.0,
                             format=nextmv.Format(
