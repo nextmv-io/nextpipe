@@ -24,7 +24,7 @@ import csv
 import json
 from typing import Any
 
-import nextmv.cloud
+import nextmv
 import requests
 
 from nextpipe import FlowSpec, app, log, needs, repeat, step
@@ -112,9 +112,9 @@ class Workflow(FlowSpec):
     @needs(predecessors=[solve_nextroute, solve_vroom, solve_ortools])
     @step
     def pick_best(
-        nextroute_results: list[nextmv.cloud.RunResult],
-        vroom_result: nextmv.cloud.RunResult,
-        ortools_result: nextmv.cloud.RunResult,
+        nextroute_results: list[nextmv.RunResult],
+        vroom_result: nextmv.RunResult,
+        ortools_result: nextmv.RunResult,
     ):
         """Pick the best solution based on the result value."""
 

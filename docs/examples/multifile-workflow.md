@@ -19,7 +19,6 @@ import os
 import shutil
 
 import nextmv
-import nextmv.cloud
 
 from nextpipe import FlowSpec, app, log, needs, step
 
@@ -76,7 +75,7 @@ class Flow(FlowSpec):
     )
     @needs(predecessors=[transform])
     @step
-    def solve2(result: nextmv.cloud.RunResult):
+    def solve2(result: nextmv.RunResult):
         """Runs another multi-file model."""
         pass
 
@@ -85,7 +84,7 @@ class Flow(FlowSpec):
     # via 'result.output'.
     @needs(predecessors=[solve2])
     @step
-    def prepare_output(result: nextmv.cloud.RunResult):
+    def prepare_output(result: nextmv.RunResult):
         """Transforms the result for the next step."""
         # Extract the path to the output files.
         result_path = result.output
