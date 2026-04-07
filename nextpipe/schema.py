@@ -98,6 +98,8 @@ class AppRunConfig:
     """Options for running the app."""
     name: str | None = None
     """Name for the run."""
+    description: str | None = None
+    """Description for the run."""
 
     def get_options(self) -> dict[str, Any]:
         """

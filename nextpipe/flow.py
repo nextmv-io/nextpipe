@@ -25,10 +25,13 @@ The module also defines status constants used throughout pipeline execution.
 import ast
 import base64
 import copy
+import datetime
 import inspect
 import io
 import os
+import pathlib
 import random
+import shutil
 import tempfile
 import threading
 import time
@@ -38,6 +41,8 @@ from typing import Any
 
 import nextmv
 from nextmv.cloud import Application, Client
+
+from nextpipe.constants import _get_run_info
 
 from . import config, decorators, graph, schema, threads, uplink, utils
 from .__about__ import __version__
@@ -861,12 +866,12 @@ class Runner:
         """
 
         reference: FlowNode = job.reference
-        reference.status = STATUS_SUCCEEDED if job.error is None else STATUS_FAILED
+        failed = job.error or reference.error
+        reference.status = STATUS_SUCCEEDED if not failed else STATUS_FAILED
         reference.result = job.result
-        reference.error = job.error
         # Check if the job failed and mark the flow as failed if it did
         with self.lock_fail:
-            if job.error is not None and not self.fail:
+            if job.error and not self.fail:
                 self.fail = True
                 self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
         # Mark the node as done (and its parent if all nodes are done)
@@ -876,6 +881,152 @@ class Runner:
                 reference.parent.done = True
         # Inform the platform about the node update
         self.uplink.submit_update(self.graph._to_uplink_dto())
+
+    @staticmethod
+    def __determine_sub_run_info(app_step_id: str, step_name: str) -> tuple[str, str]:
+        """
+        Determine name and description to use for sub-runs.
+        """
+        wf_app_id, wf_run_id = _get_run_info()
+        wf_app_id = wf_app_id or app_step_id  # Fallback if dynamic detection fails
+        wf_run_id = wf_run_id or "local"  # Use "local" for non-platform runs
+        step_name = step_name[:50]  # Truncate step name to 50 chars to keep overall name within limits
+        name = f"Nextpipe step {step_name} ({wf_app_id}/{wf_run_id})"
+        name = name[:128]  # Truncate to 128 chars to comply with platform limits
+        description = f"This run was started by the nextpipe parent: {wf_app_id} (run-id: {wf_run_id})"
+        return name, description
+
+    @staticmethod
+    def __prepare_app_run_args(
+        node: FlowNode,
+        inputs: list[object],
+        app_step: decorators.App,
+    ) -> tuple[dict[str, Any], nextmv.PollingOptions, bool]:
+        """
+        Prepare arguments for running an app step.
+
+        Returns
+        -------
+        tuple[dict[str, Any], nextmv.PollingOptions, bool]
+            A tuple of run kwargs, polling options, and whether the input is dir mode.
+        """
+
+        app_run_name, app_run_description = Runner.__determine_sub_run_info(app_step.app_id, node.id)
+
+        # TODO: We only support one predecessor for app steps for now. This may
+        # change in the future. We may want to support multiple predecessors for
+        # app steps. However, we need to think about how to handle the input and
+        # how to expose control over the input to the user.
+        if len(inputs) > 1:
+            raise Exception(f"App steps cannot have more than one predecessor, but {node.id} has {len(inputs)}")
+
+        if isinstance(inputs[0], schema.AppRunConfig):
+            app_run_config: schema.AppRunConfig = inputs[0]
+            input_data = app_run_config.input
+            if app_run_config.name:
+                app_run_name = app_run_config.name
+            if app_run_config.description:
+                app_run_description = app_run_config.description
+            # AppRunConfig options take precedence over decorator options.
+            options = app_step.options | app_run_config.get_options()
+        elif isinstance(inputs[0], nextmv.RunResult):
+            run_result: nextmv.RunResult = inputs[0]
+            input_data = run_result.output
+            options = app_step.options
+        else:
+            input_data = inputs[0]
+            options = app_step.options
+
+        is_dir_mode = isinstance(input_data, str) and os.path.isdir(input_data)
+
+        polling_options = copy.deepcopy(app_step.polling_options)
+        polling_options.initial_delay = random.uniform(0, 5)
+        if polling_options.stop is None:
+            polling_options.stop = lambda: node.cancel
+
+        run_kwargs: dict[str, Any] = {
+            "options": options,
+            "name": app_run_name,
+            "description": app_run_description,
+        }
+        if is_dir_mode:
+            run_kwargs["input_dir_path"] = input_data
+        else:
+            run_kwargs["input"] = input_data
+        if app_step.run_configuration is not None:
+            run_kwargs["configuration"] = app_step.run_configuration
+
+        return run_kwargs, polling_options, is_dir_mode
+
+    @staticmethod
+    def __execute_app_run(
+        node: FlowNode,
+        app: Application,
+        app_step: decorators.App,
+        client: Client,
+        update_dag: callable,
+        run_kwargs: dict[str, Any],
+        polling_options: nextmv.PollingOptions,
+        is_dir_mode: bool,
+        temp_dir: str,
+    ) -> nextmv.RunResult:
+        """
+        Execute an app run or return bypass output wrapped as a run result.
+        """
+
+        if app_step.bypass_result is None:
+            run_id = app.new_run(**run_kwargs)
+            console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
+            utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
+            node.run_id = run_id
+            update_dag()  # Update node with run_id before polling
+
+            if app_step.emit_live_logs:
+                utils.log_internal(f"Emitting live logs for app step {node.id} ...")
+                app.run_logs_with_polling(
+                    run_id=run_id,
+                    verbose=True,
+                    log_func=lambda msg: utils.log(message=msg.log, step_name=node.id),
+                )
+
+            return app.run_result_with_polling(run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir)
+
+        utils.log_internal(f"Bypassing app step {node.id} run, using bypass result")
+
+        result = nextmv.RunResult(
+            id="bypassed-run",
+            name="bypassed-run",
+            description="This run was bypassed using a user-supplied result.",
+            user_email="unavailable",
+            metadata=nextmv.Metadata(
+                application_id=app_step.app_id or "unavailable",
+                application_instance_id=app_step.instance_id or "unavailable",
+                application_version_id="unavailable",
+                created_at=datetime.datetime.now(),
+                duration=0.0,
+                error="",
+                input_size=0.0,
+                output_size=0.0,
+                format=nextmv.Format(
+                    format_input=nextmv.FormatInput(
+                        input_type=nextmv.InputFormat.MULTI_FILE if is_dir_mode else nextmv.InputFormat.JSON,
+                    ),
+                ),
+                status_v2=nextmv.StatusV2.succeeded,
+            ),
+        )
+        result.output = app_step.bypass_result
+
+        if isinstance(app_step.bypass_result, str) and os.path.isdir(app_step.bypass_result):
+            src = pathlib.Path(app_step.bypass_result)
+            dst = pathlib.Path(temp_dir)
+            for item in src.iterdir():
+                if item.is_file():
+                    shutil.copy2(item, dst / item.name)
+                elif item.is_dir():
+                    shutil.copytree(item, dst / item.name)
+
+        return result
 
     @staticmethod
     def __run_step(
@@ -916,67 +1067,7 @@ class Runner:
         if node.parent.definition.is_app():
             app_step: decorators.App = node.parent.definition.app
 
-            # Prepare the input for the app
-            # TODO: We only support one predecessor for app steps for now. This may
-            # change in the future. We may want to support multiple predecessors for
-            # app steps. However, we need to think about how to handle the input and
-            # how to expose control over the input to the user.
-            if len(inputs) > 1:
-                raise Exception(f"App steps cannot have more than one predecessor, but {node.id} has {len(inputs)}")
-            if isinstance(inputs[0], schema.AppRunConfig):
-                # If the input is AppRunConfig, unwrap it.
-                app_run_config: schema.AppRunConfig = inputs[0]
-                input = app_run_config.input
-                name = app_run_config.name if app_run_config.name else node.id
-                app_run_options = app_run_config.get_options()
-                # Merge the options from the app decorator with the options from the
-                # AppRunConfig. AppRunConfig options take precedence.
-                options = app_step.options | app_run_options
-            elif isinstance(inputs[0], nextmv.RunResult):
-                # If the input is a RunResult, we use its output as input.
-                run_result: nextmv.RunResult = inputs[0]
-                input = run_result.output
-                options = app_step.options
-                name = node.id
-            else:
-                # If the input is not AppRunConfig, we use it directly.
-                input = inputs[0]
-                options = app_step.options
-                name = node.id
-
-            # Detect dir mode / multi-file direct input
-            is_dir_mode = False
-            if isinstance(input, str) and os.path.isdir(input):
-                is_dir_mode = True
-
-            # Modify the polling options set for the step (by default or by the
-            # user) so that the initial delay is randomized and the stopping
-            # callback is configured as the node being cancelled if the user
-            # doesn't want to override it.
-            polling_options = copy.deepcopy(app_step.polling_options)
-            delay = random.uniform(0, 5)  # For lack of a better idea...
-            polling_options.initial_delay = delay
-            if polling_options.stop is None:
-                polling_options.stop = lambda: node.cancel
-
-            run_args = (
-                [],  # No nameless arguments
-                {  # We use the named arguments to pass the user arguments to the run function
-                    "options": options,
-                    "name": name,
-                },
-            )
-
-            # Prepare input argument. We need to use 'input_dir_path' when dealing with a
-            # directory input (e.g., multi-file input).
-            if is_dir_mode:
-                run_args[1]["input_dir_path"] = input
-            else:
-                run_args[1]["input"] = input
-
-            # Apply run configuration if given.
-            if app_step.run_configuration is not None:
-                run_args[1]["configuration"] = app_step.run_configuration
+            run_kwargs, polling_options, is_dir_mode = Runner.__prepare_app_run_args(node, inputs, app_step)
 
             # Prepare the application itself.
             app = Application(
@@ -991,14 +1082,18 @@ class Runner:
 
             # Run the application
             try:
-                run_id = app.new_run(*run_args[0], **run_args[1])
-                console_url = f"{client.console_url}/app/{app_step.app_id}/run/{run_id}?view=details"
-                utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
-                node.run_id = run_id
-                update_dag()  # Update the node with the run_id before we start polling for results
-                result = app.run_result_with_polling(
-                    run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir
+                result = Runner.__execute_app_run(
+                    node=node,
+                    app=app,
+                    app_step=app_step,
+                    client=client,
+                    update_dag=update_dag,
+                    run_kwargs=run_kwargs,
+                    polling_options=polling_options,
+                    is_dir_mode=is_dir_mode,
+                    temp_dir=temp_dir,
                 )
+
             finally:  # Make sure we clean up temp dir on failure too
                 # If the temp dir is empty, remove it
                 dir_result = False
@@ -1006,6 +1101,9 @@ class Runner:
                     os.rmdir(temp_dir)
                 else:
                     dir_result = True
+
+            # Emit result status to DAG
+            node.error = result.metadata.error
 
             # Return result
             #  - Do not unwrap if full result is requested
