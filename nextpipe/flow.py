@@ -999,8 +999,8 @@ class Runner:
             description="This run was bypassed using a user-supplied result.",
             user_email="unavailable",
             metadata=nextmv.Metadata(
-                application_id="unavailable",
-                application_instance_id="unavailable",
+                application_id=app_step.app_id or "unavailable",
+                application_instance_id=app_step.instance_id or "unavailable",
                 application_version_id="unavailable",
                 created_at=datetime.datetime.now(),
                 duration=0.0,
