@@ -41,14 +41,18 @@ class Flow(FlowSpec):
         result_ortools: dict,
         result_pyvroom: dict,
     ):
-        """Aggregates the results."""
+        def get_value(idx: int, result: dict) -> float:
+            if k := next((k for k in ("statistics", "metrics") if k in result), None):
+                return result[k]["result"]["value"]
+            raise ValueError(f"Result at index {idx} does not contain 'statistics' or 'metrics'")
+
         results = results_nextroute + [result_ortools, result_pyvroom]
         best_solution_idx = min(
             range(len(results)),
-            key=lambda i: results[i]["statistics"]["result"]["value"],
+            key=lambda i: get_value(i, results[i]),
         )
 
-        values = [result["statistics"]["result"]["value"] for result in results]
+        values = [get_value(i, result) for i, result in enumerate(results)]
         values.sort()
         log(f"Values: {values}")
 

@@ -118,14 +118,20 @@ class Workflow(FlowSpec):
     ):
         """Pick the best solution based on the result value."""
 
-        results = nextroute_results + [vroom_result, ortools_result]
+        def get_value(idx: int, result: dict) -> float:
+            if k := next((k for k in ("statistics", "metrics") if k in result), None):
+                return result[k]["result"]["value"]
+            raise ValueError(f"Result at index {idx} does not contain 'statistics' or 'metrics'")
+
+        """Aggregates the results."""
+        results = results_nextroute + [result_ortools, result_pyvroom]
         best_solution_idx = min(
             range(len(results)),
-            key=lambda i: results[i].output["statistics"]["result"]["value"],
+            key=lambda i: get_value(i, results[i]),
         )
 
-        for result in results:
-            log(f"{result.metadata.application_id}: " + f"{result.output['statistics']['result']['value']}")
+        for i, result in enumerate(results):
+            log(f"{result.metadata.application_id}: " + f"{get_value(i, result)}")
 
         return results[best_solution_idx].output
 
