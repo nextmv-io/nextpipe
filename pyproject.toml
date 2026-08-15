@@ -47,7 +47,7 @@ requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://www.nextmv.io"
-Documentation = "https://nextpipe.docs.nextmv.io/en/latest/"
+Documentation = "https://docs.nextmv.io/nextpipe"
 Repository = "https://github.com/nextmv-io/nextpipe"
 
 [tool.ruff]

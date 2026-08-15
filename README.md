@@ -1,7 +1,5 @@
 # Nextpipe
 
-<!-- markdownlint-disable MD033 MD013 -->
-
 <p align="center">
   <a href="https://nextmv.io"><img src="https://cdn.prod.website-files.com/60dee0fad10d14c8ab66dd74/65c66addcd07eed09be35114_blog-banner-what-is-cicd-for-decision-science-p-2000.jpeg" alt="Nextmv" width="45%"></a>
 </p>
@@ -23,8 +21,6 @@
 </a>
 </p>
 
-<!-- markdownlint-enable MD033 MD013 -->
-
 Nextpipe is a Python package that provides a framework for Decision Workflows
 modeling and execution. It provides first-class support for Workflows in the
 [Nextmv Platform][nextmv].
@@ -38,13 +34,26 @@ modeling and execution. It provides first-class support for Workflows in the
 
 ## Installation
 
-The package is hosted on [PyPI][nextpipe-pypi]. Python `>=3.10` is required.
+The package is hosted on [PyPI][nextpipe-pypi]. Requires Python `>=3.10`.
+Install using the Python package manager of your choice:
 
-Install via `pip`:
+* `uv`
 
-```bash
-pip install nextpipe
-```
+    ```bash
+    uv add nextpipe
+    ```
+
+* `pip`
+
+    ```bash
+    pip install nextpipe
+    ```
+
+* `pipx`
+
+    ```bash
+    pipx install nextpipe
+    ```
 
 ## Preview
 
@@ -78,4 +87,4 @@ graph LR
 
 [nextpipe-pypi]: https://pypi.org/project/nextpipe/
 [nextmv]: https://nextmv.io
-[docs]: https://nextpipe.docs.nextmv.io/en/latest/
+[docs]: https://docs.nextmv.io/nextpipe
