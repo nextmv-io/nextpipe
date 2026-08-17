@@ -123,7 +123,7 @@ class TestExample(unittest.TestCase):
         # APPAPP
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$.echo.data.statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$.echo.data.metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -138,9 +138,9 @@ class TestExample(unittest.TestCase):
         # FOREACH
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$[0].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[1].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[2].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2].metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -155,9 +155,9 @@ class TestExample(unittest.TestCase):
         # FOREACH 2 PREDECESSORS
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$[0][0].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[1][0].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[2][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[0][0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1][0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2][0].metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -172,8 +172,8 @@ class TestExample(unittest.TestCase):
         # COMPLEX
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$.statistics.result.duration", value="0.123"),
-                goldie.JsonReplacement(path="$.statistics.run.duration", value="0.123"),
+                goldie.JsonReplacement(path="$.metrics.result.duration", value="0.123"),
+                goldie.JsonReplacement(path="$.metrics.run.duration", value="0.123"),
             ],
         )
         goldie.run_file_unittest(

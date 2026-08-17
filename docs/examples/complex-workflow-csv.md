@@ -121,11 +121,11 @@ class Workflow(FlowSpec):
         results = nextroute_results + [vroom_result, ortools_result]
         best_solution_idx = min(
             range(len(results)),
-            key=lambda i: results[i].output["statistics"]["result"]["value"],
+            key=lambda i: results[i].output["metrics"]["result"]["value"],
         )
 
         for result in results:
-            log(f"{result.metadata.application_id}: " + f"{result.output['statistics']['result']['value']}")
+            log(f"{result.metadata.application_id}: " + f"{result.output['metrics']['result']['value']}")
 
         return results[best_solution_idx].output
 

@@ -51,7 +51,7 @@
         ],
         "unplanned": []
     },
-    "statistics": {
+    "metrics": {
         "run": {
             "duration": "0.123"
         },

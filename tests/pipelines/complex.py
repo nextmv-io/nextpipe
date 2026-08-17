@@ -43,12 +43,17 @@ class Flow(FlowSpec):
     ):
         """Aggregates the results."""
         results = results_nextroute + [result_ortools, result_pyvroom]
+
+        # Define value extractor for both output formats of the solvers.
+        def get_value(sol: dict):
+            return sol["metrics"]["result"]["value"] if "metrics" in sol else sol["statistics"]["result"]["value"]
+
         best_solution_idx = min(
             range(len(results)),
-            key=lambda i: results[i]["statistics"]["result"]["value"],
+            key=lambda i: get_value(results[i]),
         )
 
-        values = [result["statistics"]["result"]["value"] for result in results]
+        values = [get_value(result) for result in results]
         values.sort()
         log(f"Values: {values}")
 
