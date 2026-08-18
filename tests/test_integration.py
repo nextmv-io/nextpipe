@@ -55,21 +55,17 @@ class TestPlatform(unittest.TestCase):
             result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
             self.assertTrue(hasattr(result, "error_log"), msg=f"result has no error_log attribute; result: {result}")
             self.assertIsNone(result.error_log, msg=f"expected no error_log, got: {result.error_log}")
-            self.assertEqual(
-                result.output["echo"]["data"]["enhanced"],
-                True,
-                msg=f"unexpected 'enhanced' value; output: {result.output}",
-            )
-            self.assertEqual(
-                result.output["echo"]["data"]["prepared"],
-                True,
-                msg=f"unexpected 'prepared' value; output: {result.output}",
-            )
-            self.assertEqual(
-                result.output["echo"]["data"]["random"],
-                r,
-                msg=f"unexpected 'random' value; expected {r}, output: {result.output}",
-            )
+            expected_data = {
+                "enhanced": True,
+                "prepared": True,
+                "random": r,
+            }
+            for name, expected in expected_data.items():
+                self.assertEqual(
+                    result.output["echo"]["data"][name],
+                    expected,
+                    msg=f"unexpected '{name}' value; expected {expected}, output: {result.output}",
+                )
         finally:
             # Make sure to delete the app
             if app:
