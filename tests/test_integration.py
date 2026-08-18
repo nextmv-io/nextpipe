@@ -46,17 +46,30 @@ class TestPlatform(unittest.TestCase):
             current_dir = os.getcwd()
             os.chdir(path)
             _create_key_file(path)
-            app.push()  # Use verbose=True for step-by-step output.
+            app.push(verbose=True)
             os.chdir(current_dir)
 
             # Run the app
             r = random.randint(0, 100)
             polling_opts = nextmv.PollingOptions(max_tries=500, max_duration=240)
             result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
-            self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
-            self.assertEqual(result.output["echo"]["data"]["enhanced"], True)
-            self.assertEqual(result.output["echo"]["data"]["prepared"], True)
-            self.assertEqual(result.output["echo"]["data"]["random"], r)
+            self.assertTrue(hasattr(result, "error_log"), msg=f"result has no error_log attribute; result: {result}")
+            self.assertIsNone(result.error_log, msg=f"expected no error_log, got: {result.error_log}")
+            self.assertEqual(
+                result.output["echo"]["data"]["enhanced"],
+                True,
+                msg=f"unexpected 'enhanced' value; output: {result.output}",
+            )
+            self.assertEqual(
+                result.output["echo"]["data"]["prepared"],
+                True,
+                msg=f"unexpected 'prepared' value; output: {result.output}",
+            )
+            self.assertEqual(
+                result.output["echo"]["data"]["random"],
+                r,
+                msg=f"unexpected 'random' value; expected {r}, output: {result.output}",
+            )
         finally:
             # Make sure to delete the app
             if app:
