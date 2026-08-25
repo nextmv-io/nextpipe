@@ -93,10 +93,10 @@ class Workflow(FlowSpec):
         results = results_nextroute + [result_ortools, result_pyvroom]
         best_solution_idx = min(
             range(len(results)),
-            key=lambda i: results[i]["statistics"]["result"]["value"],
+            key=lambda i: results[i]["metrics"]["result"]["value"],
         )
 
-        values = [result["statistics"]["result"]["value"] for result in results]
+        values = [result["metrics"]["result"]["value"] for result in results]
         values.sort()
         log(f"Values: {values}")
 
