@@ -20,7 +20,7 @@ jobs:
         run: uv sync --locked --dev
 
       - name: handle nextpipe dependency
-        run: uv add --editable ./nextpipe --no-sync
+        run: uv add --editable . --no-sync
 
       - name: unit tests
         env:
