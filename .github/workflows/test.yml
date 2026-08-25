@@ -19,9 +19,6 @@ jobs:
       - name: install the project
         run: uv sync --locked --dev
 
-      - name: handle nextpipe dependency
-        run: uv add --editable . --no-sync
-
       - name: unit tests
         env:
           NEXTMV_API_KEY_NEXTPIPE: ${{ secrets.NEXTMV_API_KEY_NEXTPIPE }}
