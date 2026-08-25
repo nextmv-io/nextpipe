@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.31.0",
-    "nextmv>=1.2.2",
+    "nextmv>=1.10.3",
     "dataclasses-json>=0.6.7",
 ]
 description = "Framework for Decision Pipeline modeling and execution"
@@ -68,8 +68,9 @@ max-complexity = 20
 [tool.hatch.version]
 path = "nextpipe/__about__.py"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "ruff>=0.11.6",
-    "goldie>=0.1.8",
+    "goldie==0.1.8",
+    "pytest==9.0.2",
+    "ruff==0.16.3",
 ]

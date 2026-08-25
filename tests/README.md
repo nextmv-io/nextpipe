@@ -9,13 +9,13 @@ Setup the custom apps as follows:
 ```bash
 # Setup echo app
 cd apps/echo
-nextmv app create -a echo -n "Echo" || true
-nextmv app push -a echo
+nextmv cloud app create -a echo -n "Echo" || true
+nextmv cloud app push -a echo
 cd ../..
 # Setup echo-multi app
 cd apps/echo-multi
-nextmv app create -a echo-multi -n "Echo Multi" || true
-nextmv app push -a echo-multi
+nextmv cloud app create -a echo-multi -n "Echo Multi" || true
+nextmv cloud app push -a echo-multi
 cd ../..
 ```
 

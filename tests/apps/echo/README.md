@@ -14,6 +14,6 @@ echo '{"hello": "world!"}' | python main.py
 ## Push to Nextmv
 
 ```bash
-nextmv app create -a echo -n "JSON echo" -d "This is a sample app that reads JSON from the input and writes it to the output."
-nextmv app push -a echo
+nextmv cloud app create -a echo -n "JSON echo" -d "This is a sample app that reads JSON from the input and writes it to the output."
+nextmv cloud app push -a echo
 ```

@@ -1,7 +1,5 @@
 {
     "options": {
-        "input": "",
-        "output": "",
         "duration": 30
     },
     "solution": {
@@ -51,22 +49,18 @@
         ],
         "unplanned": []
     },
-    "statistics": {
-        "run": {
-            "duration": "0.123"
-        },
+    "assets": [],
+    "metrics": {
+        "duration": "0.123",
+        "objective_value": 287,
+        "solution_found": true,
+        "activated_vehicles": 1,
+        "max_route_duration": 287,
+        "max_stops_in_vehicle": 2,
+        "min_stops_in_vehicle": 2,
         "result": {
-            "value": 287.0,
-            "custom": {
-                "solution_found": true,
-                "activated_vehicles": 1,
-                "max_route_duration": 287,
-                "max_stops_in_vehicle": 2,
-                "min_stops_in_vehicle": 2
-            },
+            "value": 287,
             "duration": "0.123"
-        },
-        "schema": "v1"
-    },
-    "assets": []
+        }
+    }
 }

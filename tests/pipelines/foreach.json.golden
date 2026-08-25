@@ -10,7 +10,7 @@
                 ]
             }
         },
-        "statistics": {
+        "metrics": {
             "run": {
                 "duration": 0.123
             }
@@ -28,7 +28,7 @@
                 ]
             }
         },
-        "statistics": {
+        "metrics": {
             "run": {
                 "duration": 0.123
             }
@@ -46,7 +46,7 @@
                 ]
             }
         },
-        "statistics": {
+        "metrics": {
             "run": {
                 "duration": 0.123
             }

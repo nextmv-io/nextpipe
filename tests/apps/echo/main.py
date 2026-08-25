@@ -12,6 +12,6 @@ output = nextmv.Output(
             "args": sys.argv[1:],
         },
     },
-    statistics={"run": {"duration": time.time() - before}},
+    metrics={"run": {"duration": time.time() - before}},
 )
 nextmv.write(output)

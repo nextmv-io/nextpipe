@@ -46,17 +46,26 @@ class TestPlatform(unittest.TestCase):
             current_dir = os.getcwd()
             os.chdir(path)
             _create_key_file(path)
-            app.push()  # Use verbose=True for step-by-step output.
+            app.push(verbose=True)
             os.chdir(current_dir)
 
             # Run the app
             r = random.randint(0, 100)
             polling_opts = nextmv.PollingOptions(max_tries=500, max_duration=240)
             result = app.new_run_with_result(input={"random": r}, polling_options=polling_opts)
-            self.assertTrue(hasattr(result, "error_log") and result.error_log is None)
-            self.assertEqual(result.output["echo"]["data"]["enhanced"], True)
-            self.assertEqual(result.output["echo"]["data"]["prepared"], True)
-            self.assertEqual(result.output["echo"]["data"]["random"], r)
+            self.assertTrue(hasattr(result, "error_log"), msg=f"result has no error_log attribute; result: {result}")
+            self.assertIsNone(result.error_log, msg=f"expected no error_log, got: {result.error_log}")
+            expected_data = {
+                "enhanced": True,
+                "prepared": True,
+                "random": r,
+            }
+            for name, expected in expected_data.items():
+                self.assertEqual(
+                    result.output["echo"]["data"][name],
+                    expected,
+                    msg=f"unexpected '{name}' value; expected {expected}, output: {result.output}",
+                )
         finally:
             # Make sure to delete the app
             if app:
@@ -123,7 +132,7 @@ class TestExample(unittest.TestCase):
         # APPAPP
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$.echo.data.statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$.echo.data.metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -138,9 +147,9 @@ class TestExample(unittest.TestCase):
         # FOREACH
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$[0].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[1].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[2].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2].metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -155,9 +164,9 @@ class TestExample(unittest.TestCase):
         # FOREACH 2 PREDECESSORS
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$[0][0].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[1][0].statistics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[2][0].statistics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[0][0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1][0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2][0].metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(
@@ -172,8 +181,8 @@ class TestExample(unittest.TestCase):
         # COMPLEX
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$.statistics.result.duration", value="0.123"),
-                goldie.JsonReplacement(path="$.statistics.run.duration", value="0.123"),
+                goldie.JsonReplacement(path="$.metrics.result.duration", value="0.123"),
+                goldie.JsonReplacement(path="$.metrics.duration", value="0.123"),
             ],
         )
         goldie.run_file_unittest(

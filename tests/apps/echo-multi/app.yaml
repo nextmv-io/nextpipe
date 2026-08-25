@@ -4,3 +4,6 @@ python:
   pip-requirements: requirements.txt
 files:
   - main.py
+configuration:
+  content:
+    format: multi-file
