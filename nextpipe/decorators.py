@@ -798,12 +798,16 @@ class App:
             The ID of the Nextmv Application to run.
         instance_id : str, optional
             The ID of the instance to run. Default is defined by the app on Platform.
+            A predecessor step may override this per run by returning an `AppRunConfig`
+            carrying its own `instance_id`.
         options : dict[str, Any], optional
             The options to pass to the application, by default None.
         full_result : bool, optional
             Whether to return the full result including metadata, by default False.
         run_configuration : nextmv.RunConfiguration, optional
-            The configuration to apply when running the app, by default None.
+            The configuration to apply when running the app, by default None. A
+            predecessor step may override this per run by returning an
+            `AppRunConfig` carrying its own `run_configuration`.
         polling_options : Optional[nextmv.PollingOptions], optional
             Options for polling for the results of the app run, by default _DEFAULT_POLLING_OPTIONS.
         bypass_result : typing.Any, optional
@@ -884,7 +888,9 @@ def app(
     app_id : str
         The ID of the application to run.
     instance_id : str
-        The ID of the instance to run. Default is defined by the app on Platform.
+        The ID of the instance to run. Default is defined by the app on Platform. A
+        predecessor step may override this per run by returning an `AppRunConfig`
+        carrying its own `instance_id`.
     options : dict[str, Any]
         The options to pass to the application. This is a dictionary of
         parameter names and values. The values must be JSON serializable.
@@ -894,7 +900,10 @@ def app(
         this is set to `False`, only the output of the application will be
         returned.
     run_configuration : nextmv.RunConfiguration
-        The configuration to apply when running the app.
+        The configuration to apply when running the app. A predecessor step may
+        override this per run by returning an `AppRunConfig` carrying its own
+        `run_configuration`. In that case, the configuration of the `AppRunConfig`
+        replaces this one as a whole, i.e., no fields are inherited from it.
     polling_options : Optional[nextmv.PollingOptions]
         Options for polling for the results of the app run. This is used to
         configure the polling behavior, such as the timeout and backoff

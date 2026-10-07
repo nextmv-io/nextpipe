@@ -901,14 +901,15 @@ class Runner:
         node: FlowNode,
         inputs: list[object],
         app_step: decorators.App,
-    ) -> tuple[dict[str, Any], nextmv.PollingOptions, bool]:
+    ) -> tuple[dict[str, Any], nextmv.PollingOptions, bool, str]:
         """
         Prepare arguments for running an app step.
 
         Returns
         -------
-        tuple[dict[str, Any], nextmv.PollingOptions, bool]
-            A tuple of run kwargs, polling options, and whether the input is dir mode.
+        tuple[dict[str, Any], nextmv.PollingOptions, bool, str]
+            A tuple of run kwargs, polling options, whether the input is dir mode, and
+            the ID of the instance to run.
         """
 
         app_run_name, app_run_description = Runner.__determine_sub_run_info(app_step.app_id, node.id)
@@ -920,6 +921,9 @@ class Runner:
         if len(inputs) > 1:
             raise Exception(f"App steps cannot have more than one predecessor, but {node.id} has {len(inputs)}")
 
+        run_configuration = app_step.run_configuration
+        instance_id = app_step.instance_id
+
         if isinstance(inputs[0], schema.AppRunConfig):
             app_run_config: schema.AppRunConfig = inputs[0]
             input_data = app_run_config.input
@@ -929,6 +933,12 @@ class Runner:
                 app_run_description = app_run_config.description
             # AppRunConfig options take precedence over decorator options.
             options = app_step.options | app_run_config.get_options()
+            # An AppRunConfig run configuration replaces the decorator one as a whole.
+            if app_run_config.run_configuration is not None:
+                run_configuration = app_run_config.run_configuration
+            # Same for the instance to run on.
+            if app_run_config.instance_id:
+                instance_id = app_run_config.instance_id
         elif isinstance(inputs[0], nextmv.RunResult):
             run_result: nextmv.RunResult = inputs[0]
             input_data = run_result.output
@@ -953,10 +963,10 @@ class Runner:
             run_kwargs["input_dir_path"] = input_data
         else:
             run_kwargs["input"] = input_data
-        if app_step.run_configuration is not None:
-            run_kwargs["configuration"] = app_step.run_configuration
+        if run_configuration is not None:
+            run_kwargs["configuration"] = run_configuration
 
-        return run_kwargs, polling_options, is_dir_mode
+        return run_kwargs, polling_options, is_dir_mode, instance_id
 
     @staticmethod
     def __execute_app_run(
@@ -969,6 +979,7 @@ class Runner:
         polling_options: nextmv.PollingOptions,
         is_dir_mode: bool,
         temp_dir: str,
+        instance_id: str,
     ) -> nextmv.RunResult:
         """
         Execute an app run or return bypass output wrapped as a run result.
@@ -1000,7 +1011,7 @@ class Runner:
             user_email="unavailable",
             metadata=nextmv.Metadata(
                 application_id=app_step.app_id or "unavailable",
-                application_instance_id=app_step.instance_id or "unavailable",
+                application_instance_id=instance_id or "unavailable",
                 application_version_id="unavailable",
                 created_at=datetime.datetime.now(),
                 duration=0.0,
@@ -1067,15 +1078,17 @@ class Runner:
         if node.parent.definition.is_app():
             app_step: decorators.App = node.parent.definition.app
 
-            run_kwargs, polling_options, is_dir_mode = Runner.__prepare_app_run_args(node, inputs, app_step)
+            run_kwargs, polling_options, is_dir_mode, instance_id = Runner.__prepare_app_run_args(
+                node, inputs, app_step
+            )
 
             # Prepare the application itself.
             app = Application(
                 client=client,
                 id=app_step.app_id,
             )
-            if app_step.instance_id is not None and app_step.instance_id != "":
-                app.default_instance_id = app_step.instance_id
+            if instance_id is not None and instance_id != "":
+                app.default_instance_id = instance_id
 
             # We always supply an output directory path in case of implicit multi-file output
             temp_dir = tempfile.mkdtemp(prefix="nextpipe_output_")
@@ -1092,6 +1105,7 @@ class Runner:
                     polling_options=polling_options,
                     is_dir_mode=is_dir_mode,
                     temp_dir=temp_dir,
+                    instance_id=instance_id,
                 )
 
             finally:  # Make sure we clean up temp dir on failure too
