@@ -57,3 +57,13 @@ class TestAppRunConfig(unittest.TestCase):
         config = AppRunConfig(input={"data": [1, 2, 3]})
         restored = AppRunConfig.from_json(config.to_json())
         self.assertIsNone(restored.run_configuration)
+
+    def test_instance_id_default(self):
+        config = AppRunConfig(input={"data": [1, 2, 3]})
+        self.assertIsNone(config.instance_id)
+
+    def test_instance_id(self):
+        config = AppRunConfig(input={"data": [1, 2, 3]}, instance_id="tuned-for-large")
+        self.assertEqual(config.instance_id, "tuned-for-large")
+        restored = AppRunConfig.from_json(config.to_json())
+        self.assertEqual(restored.instance_id, "tuned-for-large")

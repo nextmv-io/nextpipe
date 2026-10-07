@@ -798,6 +798,8 @@ class App:
             The ID of the Nextmv Application to run.
         instance_id : str, optional
             The ID of the instance to run. Default is defined by the app on Platform.
+            A predecessor step may override this per run by returning an `AppRunConfig`
+            carrying its own `instance_id`.
         options : dict[str, Any], optional
             The options to pass to the application, by default None.
         full_result : bool, optional
@@ -886,7 +888,9 @@ def app(
     app_id : str
         The ID of the application to run.
     instance_id : str
-        The ID of the instance to run. Default is defined by the app on Platform.
+        The ID of the instance to run. Default is defined by the app on Platform. A
+        predecessor step may override this per run by returning an `AppRunConfig`
+        carrying its own `instance_id`.
     options : dict[str, Any]
         The options to pass to the application. This is a dictionary of
         parameter names and values. The values must be JSON serializable.

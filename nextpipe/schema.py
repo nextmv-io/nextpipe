@@ -106,6 +106,9 @@ class AppRunConfig:
         replaces the `run_configuration` of the `app` decorator for this run. Note that
         it replaces it as a whole, i.e., no fields are inherited from the decorator's
         configuration.
+    instance_id : str, optional
+        The ID of the instance to run, by default None. If given, it replaces the
+        `instance_id` of the `app` decorator for this run.
 
     Examples
     --------
@@ -116,14 +119,15 @@ class AppRunConfig:
     ...     name="my-run"
     ... )
 
-    The run configuration can be chosen per run, e.g., to pick an execution class
-    based on the size of the scenario at hand.
+    The run configuration and instance can be chosen per run, e.g., to pick an
+    execution class based on the size of the scenario at hand.
 
     >>> import nextmv
     >>> from nextpipe import AppRunConfig
     >>> config = AppRunConfig(
     ...     input={"data": [1, 2, 3]},
     ...     run_configuration=nextmv.RunConfiguration(execution_class="8c16gb12h"),
+    ...     instance_id="tuned-for-large",
     ... )
     """
 
@@ -146,6 +150,9 @@ class AppRunConfig:
     )
     """The configuration to apply when running the app. Replaces the `run_configuration`
     of the `app` decorator as a whole, if given."""
+    instance_id: str | None = None
+    """The ID of the instance to run. Replaces the `instance_id` of the `app` decorator,
+    if given."""
 
     def get_options(self) -> dict[str, Any]:
         """
