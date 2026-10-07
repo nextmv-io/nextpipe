@@ -920,6 +920,8 @@ class Runner:
         if len(inputs) > 1:
             raise Exception(f"App steps cannot have more than one predecessor, but {node.id} has {len(inputs)}")
 
+        run_configuration = app_step.run_configuration
+
         if isinstance(inputs[0], schema.AppRunConfig):
             app_run_config: schema.AppRunConfig = inputs[0]
             input_data = app_run_config.input
@@ -929,6 +931,9 @@ class Runner:
                 app_run_description = app_run_config.description
             # AppRunConfig options take precedence over decorator options.
             options = app_step.options | app_run_config.get_options()
+            # An AppRunConfig run configuration replaces the decorator one as a whole.
+            if app_run_config.run_configuration is not None:
+                run_configuration = app_run_config.run_configuration
         elif isinstance(inputs[0], nextmv.RunResult):
             run_result: nextmv.RunResult = inputs[0]
             input_data = run_result.output
@@ -953,8 +958,8 @@ class Runner:
             run_kwargs["input_dir_path"] = input_data
         else:
             run_kwargs["input"] = input_data
-        if app_step.run_configuration is not None:
-            run_kwargs["configuration"] = app_step.run_configuration
+        if run_configuration is not None:
+            run_kwargs["configuration"] = run_configuration
 
         return run_kwargs, polling_options, is_dir_mode
 
