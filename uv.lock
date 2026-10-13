@@ -236,7 +236,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -263,14 +263,14 @@ wheels = [
 
 [[package]]
 name = "goldie"
-version = "0.1.8"
+version = "0.1.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jflat" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/16/85/bcb7cdb2f685eb9d09f60cb6eb3599bbeede9d33c06b9b72f3a0916c9d98/goldie-0.1.8.tar.gz", hash = "sha256:3660c89f92d1ad9ab5d4f55c75a59d442ebf7432e517fd4df6ad95c5d32a616b", size = 12991, upload-time = "2025-10-23T14:16:01.076Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/d5/73feb96ad77ec79803b5e5dca9f213ce25a344df67ec156fde126555222c/goldie-0.1.10.tar.gz", hash = "sha256:031b6ecc754c3591732d12ac37a7e296b83a228a81af36b98a5ed63c2e2e3ce6", size = 16883, upload-time = "2026-10-13T11:04:27.807Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/e0/4d6b1bc6cdeee5cf157e0a4b6c4287c4ed3aa3df04bee2af4ba58f525706/goldie-0.1.8-py3-none-any.whl", hash = "sha256:893d63d6c55271e68a9d98730c9a590d0668f2e382cf439965529b707d21d1dc", size = 13371, upload-time = "2025-10-23T14:15:59.707Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/b3/f02ccb7889f170567a06473489247373d669b2a9e3b01cf7682942543065/goldie-0.1.10-py3-none-any.whl", hash = "sha256:8ddc8628c0a8d6ccb43b92c4a97b14406b58d8ab607e26aa52d28862a5febe38", size = 17528, upload-time = "2026-10-13T11:04:26.6Z" },
 ]
 
 [[package]]
@@ -293,11 +293,11 @@ wheels = [
 
 [[package]]
 name = "jflat"
-version = "0.1.4"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/76/a0/11b58f28b731969a48c1694af295a8d531a869850e69eaf1e1b1731cfd14/jflat-0.1.4.tar.gz", hash = "sha256:80f3be91e88f45ac5925d821c22f51490bba13949d7a10f3318e735dfe9c8a72", size = 7825, upload-time = "2025-03-21T22:53:48.278Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/04/b664865dbcb2e62d920e1cf93432e67825b4402f2679b8aeddf88874d12c/jflat-0.1.5.tar.gz", hash = "sha256:1eaece8afd17f0350c80f5005f87a2ceed1261bf6de8baebdcd76387cb0e004d", size = 9725, upload-time = "2026-10-13T10:41:34.237Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/1d/1d2c38cd856a688de3a74d2100583a38df942a6db5f9b9fad4745251b02c/jflat-0.1.4-py3-none-any.whl", hash = "sha256:f31c30532b9944947ea5cd83ce1d0c57ca33b5d3e5ed0cf31adc0378fcdd33a5", size = 7228, upload-time = "2025-03-21T22:53:46.904Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/1e/4ef0d0323f84e7a45f29679c3b8e7daad0ea0a61912fb18420ae723c4bd5/jflat-0.1.5-py3-none-any.whl", hash = "sha256:438c39e62533349cf0f75b72efc740fa8fb2262da10a00b95ce066beaa28d6d9", size = 8147, upload-time = "2026-10-13T10:41:32.911Z" },
 ]
 
 [[package]]
@@ -495,7 +495,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "goldie", specifier = "==0.1.8" },
+    { name = "goldie", specifier = "==0.1.10" },
     { name = "pytest", specifier = "==9.0.2" },
     { name = "ruff", specifier = "==0.16.3" },
 ]
