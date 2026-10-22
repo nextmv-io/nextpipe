@@ -59,6 +59,9 @@ STATUS_SUCCEEDED = "succeeded"
 STATUS_FAILED = "failed"
 """Status constant indicating a failed step or node."""
 
+STATUS_SKIPPED = "skipped"
+"""Status constant indicating a skipped step or node."""
+
 
 class FlowStep:
     """
@@ -89,6 +92,8 @@ class FlowStep:
         Thread lock for this step.
     done : bool
         Whether this step has completed execution.
+    skipped : bool
+        Whether this step was skipped.
     successors : list[FlowStep]
         Steps that depend on this step.
     predecessors : list[FlowStep]
@@ -121,6 +126,7 @@ class FlowStep:
         self.docstring = docstring
         self.lock = threading.Lock()
         self.done = False
+        self.skipped = False
         self.successors: list[FlowStep] = []
         self.predecessors: list[FlowStep] = []
         self.nodes: list[FlowNode] = []
@@ -162,7 +168,7 @@ class FlowNode:
     id : str
         Unique identifier for this node.
     status : str
-        Current execution status (pending, running, succeeded, failed).
+        Current execution status (pending, running, succeeded, failed, skipped).
     error : str or None
         Error message if the node execution failed.
     predecessors : list[FlowNode]
@@ -804,6 +810,10 @@ class Runner:
         predecessor_inputs = {}
         for predecessor in step.predecessors:
             predecessor_results = [res.result for res in predecessor.nodes]
+            if predecessor.skipped:
+                # Skipped predecessors contribute a single None input.
+                predecessor_inputs[predecessor] = [None]
+                continue
             if predecessor.definition.is_foreach():
                 # Make sure the result is in fact a list.
                 if len(predecessor_results) != 1 or not isinstance(predecessor_results[0], list):
@@ -1138,6 +1148,34 @@ class Runner:
                 output = node.parent.definition.function(*inputs)
             return output
 
+    def __should_skip(self, step: FlowStep) -> bool:
+        """
+        Determine whether a step should be skipped.
+
+        A step is skipped if all of its predecessors were skipped (skips propagate
+        downstream) or if it is decorated with `@optional` and its condition is not
+        met. A step with at least one non-skipped predecessor still runs and
+        receives `None` for each skipped predecessor (e.g., merging branches).
+        `@join` steps stop the propagation: they always run and receive `None`
+        for skipped predecessors.
+
+        Parameters
+        ----------
+        step : FlowStep
+            The step to check. All its predecessors must be done.
+
+        Returns
+        -------
+        bool
+            True if the step should be skipped, False otherwise.
+        """
+
+        if not step.definition.is_join() and step.predecessors and all(p.skipped for p in step.predecessors):
+            return True
+        if not step.definition.is_optional():
+            return False
+        return not step.definition.optional.evaluate(step.definition, self.spec._get_inputs(step))
+
     def __create_job(self, node: FlowNode, inputs: list[Any] | Any) -> threads.Job:
         """
         Create a job for executing a step.
@@ -1207,14 +1245,17 @@ class Runner:
                     # No more steps to run at this point. Wait for the remaining tasks to finish.
                     break
                 open_steps.remove(step)
-                # Skip the step if it is optional and the condition is not met
-                if step.definition.skip():
+                # Skip the step if all its predecessors were skipped or its optional condition is not met
+                if self.__should_skip(step):
                     utils.log_internal(f"Skipping step {step.definition.get_id()}")
                     # Create dummy node
                     node = FlowNode(step, 0)
-                    node.status = STATUS_SUCCEEDED
+                    node.status = STATUS_SKIPPED
                     node.result = None
+                    node.done = True
                     step.nodes.append(node)
+                    step.skipped = True
+                    step.done = True
                     closed_steps.add(step)
                     open_steps.update(step.successors)
                     self.uplink.submit_update(self.graph._to_uplink_dto())
