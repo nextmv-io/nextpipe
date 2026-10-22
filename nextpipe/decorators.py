@@ -45,6 +45,7 @@ app
     Decorator to mark a step as a Nextmv Application.
 """
 
+import inspect
 import typing
 from collections.abc import Callable
 from enum import Enum
@@ -177,17 +178,17 @@ class Step:
 
         return hasattr(self, "needs")
 
-    def skip(self):
+    def is_optional(self):
         """
-        Check if the step should be skipped.
+        Check if the step is optional.
 
         Returns
         -------
         bool
-            True if the step should be skipped, False otherwise.
+            True if the step is optional, False otherwise.
         """
 
-        return hasattr(self, "optional") and not self.optional.condition(self)
+        return hasattr(self, "optional")
 
     def is_repeat(self):
         """
@@ -450,6 +451,32 @@ class Optional:
 
         self.condition = condition
 
+    def evaluate(self, step: Step, inputs: list[typing.Any]) -> bool:
+        """
+        Evaluate the condition.
+
+        Conditions taking a single argument only receive the step. Conditions
+        taking more arguments additionally receive the inputs of the step (the
+        results of its predecessors, or the flow input if it has none).
+
+        Parameters
+        ----------
+        step : Step
+            The step the condition belongs to.
+        inputs : list[Any]
+            The inputs of the step.
+
+        Returns
+        -------
+        bool
+            True if the step should be executed, False otherwise.
+        """
+
+        spec = inspect.getfullargspec(self.condition)
+        if len(spec.args) <= 1 and not spec.varargs:
+            return self.condition(step)
+        return self.condition(step, *inputs)
+
     def __repr__(self):
         """
         Return a string representation of the optional condition.
@@ -463,7 +490,7 @@ class Optional:
         return f"StepOnlyIf({self.condition})"
 
 
-def optional(condition: Callable[[Step], bool]):
+def optional(condition: Callable[..., bool]):
     """
     Decorator to mark a step as optional.
 
@@ -474,36 +501,65 @@ def optional(condition: Callable[[Step], bool]):
     ```
 
     This is used to determine whether the step should be executed or not. The
-    condition is a callable that takes the step as an argument and returns a
-    boolean indicating whether the step should be executed or not. The
-    condition is evaluated at runtime, so it can depend on the runtime state of
-    the pipeline.
+    condition is evaluated at runtime, right before the step would run. It
+    receives the step and, if it accepts more arguments, the inputs of the step
+    (the results of its predecessors, or the flow input if it has none).
+
+    A skipped step has the status `skipped` and its result is `None`. Skips
+    propagate downstream: a step whose predecessors were all skipped is skipped
+    as well. A step with at least one non-skipped predecessor still runs and
+    receives `None` for each skipped predecessor. This allows modeling if/else
+    branches that are merged again by a common successor. `@join` steps stop
+    the propagation: they always run and receive `None` for skipped
+    predecessors.
 
     Parameters
     ----------
-    condition : Callable[[Step], bool]
+    condition : Callable[..., bool]
         The condition to evaluate. This is a callable that takes the step
-        as an argument and returns a boolean indicating whether the step
-        should be executed or not.
+        (and optionally the inputs of the step) as arguments and returns a
+        boolean indicating whether the step should be executed or not.
 
     Example
     -------
-    In this example the step `step1` is executed given that the condition is
-    true.
+    In this example either `solve_small` or `solve_large` (and its successor
+    `polish`) is executed, depending on the input. `report` merges both branches.
 
     ```
-    from nextpipe import FlowSpec, log, optional, step
+    from nextpipe import FlowSpec, log, needs, optional, step
 
 
     class Flow(FlowSpec):
-        @optional(condition=lambda step: step.get_id() == "step1")
         @step
-        def step1() -> None:
-            log("Execute optional step 1")
+        def prepare(data: dict) -> dict:
+            return data
+
+        @optional(condition=lambda step, data: len(data["orders"]) <= 10)
+        @needs(predecessors=[prepare])
+        @step
+        def solve_small(data: dict) -> dict:
+            return {"solver": "small"}
+
+        @optional(condition=lambda step, data: len(data["orders"]) > 10)
+        @needs(predecessors=[prepare])
+        @step
+        def solve_large(data: dict) -> dict:
+            return {"solver": "large"}
+
+        @needs(predecessors=[solve_large])
+        @step
+        def polish(result: dict) -> dict:  # skipped if solve_large is skipped
+            return result | {"polished": True}
+
+        @needs(predecessors=[solve_small, polish])
+        @step
+        def report(small: dict | None, large: dict | None) -> dict:
+            return small or large
 
 
-    flow = Flow("DecisionFlow", None)
+    flow = Flow("DecisionFlow", {"orders": [1, 2, 3]})
     flow.run()
+    log(flow.get_result(flow.report))  # {'solver': 'small'}
     ```
     """
 
