@@ -147,9 +147,10 @@ class TestExample(unittest.TestCase):
         # FOREACH
         config.comparison_configuration.json_processing_config = goldie.ConfigProcessJson(
             replacements=[
-                goldie.JsonReplacement(path="$[0].metrics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[1].metrics.run.duration", value=0.123),
-                goldie.JsonReplacement(path="$[2].metrics.run.duration", value=0.123),
+                # A join step receives one entry per parallel run, each holding one result per predecessor
+                goldie.JsonReplacement(path="$[0][0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[1][0].metrics.run.duration", value=0.123),
+                goldie.JsonReplacement(path="$[2][0].metrics.run.duration", value=0.123),
             ],
         )
         goldie.run_file_unittest(

@@ -1,65 +1,80 @@
 [
-    {
-        "solution": {
-            "echo": {
-                "data": {
-                    "hello": "world!"
-                },
-                "args": [
-                    "-param=0"
-                ]
+    [
+        {
+            "options": {},
+            "solution": {
+                "echo": {
+                    "data": {
+                        "hello": "world!"
+                    },
+                    "args": [
+                        "-param=0"
+                    ]
+                }
+            },
+            "assets": [],
+            "metrics": {
+                "run": {
+                    "duration": 0.123
+                }
             }
         },
-        "metrics": {
-            "run": {
-                "duration": 0.123
+        {
+            "stats": {
+                "count": 1
             }
-        },
-        "assets": [],
-        "stats": {
-            "count": 1
         }
-    },
-    {
-        "solution": {
-            "echo": {
-                "data": {
-                    "hello": "world!"
-                },
-                "args": [
-                    "-param=1"
-                ]
+    ],
+    [
+        {
+            "options": {},
+            "solution": {
+                "echo": {
+                    "data": {
+                        "hello": "world!"
+                    },
+                    "args": [
+                        "-param=1"
+                    ]
+                }
+            },
+            "assets": [],
+            "metrics": {
+                "run": {
+                    "duration": 0.123
+                }
             }
         },
-        "metrics": {
-            "run": {
-                "duration": 0.123
+        {
+            "stats": {
+                "count": 1
             }
-        },
-        "assets": [],
-        "stats": {
-            "count": 1
         }
-    },
-    {
-        "solution": {
-            "echo": {
-                "data": {
-                    "hello": "world!"
-                },
-                "args": [
-                    "-param=2"
-                ]
+    ],
+    [
+        {
+            "options": {},
+            "solution": {
+                "echo": {
+                    "data": {
+                        "hello": "world!"
+                    },
+                    "args": [
+                        "-param=2"
+                    ]
+                }
+            },
+            "assets": [],
+            "metrics": {
+                "run": {
+                    "duration": 0.123
+                }
             }
         },
-        "metrics": {
-            "run": {
-                "duration": 0.123
+        {
+            "stats": {
+                "count": 1
             }
-        },
-        "assets": [],
-        "stats": {
-            "count": 1
         }
-    }
+    ]
 ]

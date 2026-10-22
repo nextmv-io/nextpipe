@@ -70,7 +70,7 @@ path = "nextpipe/__about__.py"
 
 [dependency-groups]
 dev = [
-    "goldie==0.1.8",
+    "goldie==0.1.10",
     "pytest==9.0.2",
     "ruff==0.16.3",
 ]
