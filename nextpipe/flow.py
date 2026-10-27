@@ -94,6 +94,8 @@ class FlowStep:
         Whether this step has completed execution.
     skipped : bool
         Whether this step was skipped.
+    skip_downstream : bool
+        Whether the skip of this step propagates to its successors.
     successors : list[FlowStep]
         Steps that depend on this step.
     predecessors : list[FlowStep]
@@ -127,6 +129,7 @@ class FlowStep:
         self.lock = threading.Lock()
         self.done = False
         self.skipped = False
+        self.skip_downstream = False
         self.successors: list[FlowStep] = []
         self.predecessors: list[FlowStep] = []
         self.nodes: list[FlowNode] = []
@@ -1148,16 +1151,35 @@ class Runner:
                 output = node.parent.definition.function(*inputs)
             return output
 
+    @staticmethod
+    def __skipped_by_predecessors(step: FlowStep) -> bool:
+        """
+        Check whether a step is skipped because of its predecessors.
+
+        This is the case if all of its predecessors were skipped with
+        `skip_downstream`. A step with at least one other predecessor still runs
+        and receives `None` for each skipped one (e.g., merging branches).
+
+        Parameters
+        ----------
+        step : FlowStep
+            The step to check. All its predecessors must be done.
+
+        Returns
+        -------
+        bool
+            True if the step is skipped because of its predecessors.
+        """
+
+        return bool(step.predecessors) and all(p.skipped and p.skip_downstream for p in step.predecessors)
+
     def __should_skip(self, step: FlowStep) -> bool:
         """
         Determine whether a step should be skipped.
 
-        A step is skipped if all of its predecessors were skipped (skips propagate
-        downstream) or if it is decorated with `@optional` and its condition is not
-        met. A step with at least one non-skipped predecessor still runs and
-        receives `None` for each skipped predecessor (e.g., merging branches).
-        `@join` steps stop the propagation: they always run and receive `None`
-        for skipped predecessors.
+        A step is skipped if it is skipped because of its predecessors (see
+        `__skipped_by_predecessors`) or if it is decorated with `@optional` and
+        its condition is not met.
 
         Parameters
         ----------
@@ -1170,7 +1192,7 @@ class Runner:
             True if the step should be skipped, False otherwise.
         """
 
-        if not step.definition.is_join() and step.predecessors and all(p.skipped for p in step.predecessors):
+        if self.__skipped_by_predecessors(step):
             return True
         if not step.definition.is_optional():
             return False
@@ -1245,7 +1267,7 @@ class Runner:
                     # No more steps to run at this point. Wait for the remaining tasks to finish.
                     break
                 open_steps.remove(step)
-                # Skip the step if all its predecessors were skipped or its optional condition is not met
+                # Skip the step if its predecessors were skipped (with skip_downstream) or its condition is not met
                 if self.__should_skip(step):
                     utils.log_internal(f"Skipping step {step.definition.get_id()}")
                     # Create dummy node
@@ -1255,6 +1277,10 @@ class Runner:
                     node.done = True
                     step.nodes.append(node)
                     step.skipped = True
+                    # Propagated skips keep propagating, own skips only if requested
+                    step.skip_downstream = (
+                        self.__skipped_by_predecessors(step) or step.definition.optional.skip_downstream
+                    )
                     step.done = True
                     closed_steps.add(step)
                     open_steps.update(step.successors)

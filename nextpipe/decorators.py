@@ -190,6 +190,26 @@ class Step:
 
         return hasattr(self, "optional")
 
+    def skip(self):
+        """
+        Check if the step should be skipped.
+
+        Deprecated: skipping is decided by the runner, which also passes the
+        step's inputs to the condition and propagates skips. Use
+        `is_optional()` to check whether a step has a condition.
+
+        Returns
+        -------
+        bool
+            True if the step should be skipped, False otherwise.
+        """
+
+        deprecated(
+            "Step.skip",
+            "Step.skip() is deprecated and will be removed in a future release. Use Step.is_optional() instead.",
+        )
+        return self.is_optional() and not self.optional.condition(self)
+
     def is_repeat(self):
         """
         Check if the step should be repeated.
@@ -436,9 +456,12 @@ class Optional:
     condition : callable
         A function that takes a step and returns a boolean indicating
         whether the step should be executed or not.
+    skip_downstream : bool
+        Whether skipping this step also skips the steps that depend only on
+        it.
     """
 
-    def __init__(self, condition: callable):
+    def __init__(self, condition: callable, skip_downstream: bool = False):
         """
         Initialize an Optional object.
 
@@ -447,17 +470,22 @@ class Optional:
         condition : callable
             A function that takes a step and returns a boolean indicating
             whether the step should be executed or not.
+        skip_downstream : bool, optional
+            Whether skipping this step also skips the steps that depend only
+            on it, by default False.
         """
 
         self.condition = condition
+        self.skip_downstream = skip_downstream
 
     def evaluate(self, step: Step, inputs: list[typing.Any]) -> bool:
         """
         Evaluate the condition.
 
-        Conditions taking a single argument only receive the step. Conditions
-        taking more arguments additionally receive the inputs of the step (the
-        results of its predecessors, or the flow input if it has none).
+        Conditions with a single required parameter only receive the step.
+        Conditions with more required parameters (or `*args`) additionally
+        receive the inputs of the step (the results of its predecessors, or the
+        flow input if it has none).
 
         Parameters
         ----------
@@ -472,8 +500,13 @@ class Optional:
             True if the step should be executed, False otherwise.
         """
 
-        spec = inspect.getfullargspec(self.condition)
-        if len(spec.args) <= 1 and not spec.varargs:
+        # Parameters with defaults are not counted, and `self` of bound methods
+        # is not part of the signature.
+        params = inspect.signature(self.condition).parameters.values()
+        positional = (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        required = [p for p in params if p.kind in positional and p.default is inspect.Parameter.empty]
+        varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
+        if len(required) <= 1 and not varargs:
             return self.condition(step)
         return self.condition(step, *inputs)
 
@@ -487,10 +520,10 @@ class Optional:
             A string representation of the optional condition.
         """
 
-        return f"StepOnlyIf({self.condition})"
+        return f"StepOnlyIf({self.condition}, skip_downstream={self.skip_downstream})"
 
 
-def optional(condition: Callable[..., bool]):
+def optional(condition: Callable[..., bool], skip_downstream: bool = False):
     """
     Decorator to mark a step as optional.
 
@@ -505,13 +538,15 @@ def optional(condition: Callable[..., bool]):
     receives the step and, if it accepts more arguments, the inputs of the step
     (the results of its predecessors, or the flow input if it has none).
 
-    A skipped step has the status `skipped` and its result is `None`. Skips
-    propagate downstream: a step whose predecessors were all skipped is skipped
-    as well. A step with at least one non-skipped predecessor still runs and
-    receives `None` for each skipped predecessor. This allows modeling if/else
-    branches that are merged again by a common successor. `@join` steps stop
-    the propagation: they always run and receive `None` for skipped
-    predecessors.
+    A skipped step has the status `skipped` and its result is `None`. By
+    default, only the step itself is skipped: its successors still run and
+    receive `None` as its result.
+
+    With `skip_downstream=True`, the skip propagates: a step whose
+    predecessors were all skipped this way is skipped as well (and so on). A
+    step with at least one other predecessor still runs and receives `None`
+    for each skipped one. This allows modeling if/else branches that are
+    merged again by a common successor.
 
     Parameters
     ----------
@@ -519,6 +554,9 @@ def optional(condition: Callable[..., bool]):
         The condition to evaluate. This is a callable that takes the step
         (and optionally the inputs of the step) as arguments and returns a
         boolean indicating whether the step should be executed or not.
+    skip_downstream : bool, optional
+        Whether skipping this step also skips the steps that depend only on
+        it, by default False.
 
     Example
     -------
@@ -534,13 +572,13 @@ def optional(condition: Callable[..., bool]):
         def prepare(data: dict) -> dict:
             return data
 
-        @optional(condition=lambda step, data: len(data["orders"]) <= 10)
+        @optional(condition=lambda step, data: len(data["orders"]) <= 10, skip_downstream=True)
         @needs(predecessors=[prepare])
         @step
         def solve_small(data: dict) -> dict:
             return {"solver": "small"}
 
-        @optional(condition=lambda step, data: len(data["orders"]) > 10)
+        @optional(condition=lambda step, data: len(data["orders"]) > 10, skip_downstream=True)
         @needs(predecessors=[prepare])
         @step
         def solve_large(data: dict) -> dict:
@@ -564,7 +602,7 @@ def optional(condition: Callable[..., bool]):
     """
 
     def decorator(function):
-        function.step.optional = Optional(condition)
+        function.step.optional = Optional(condition, skip_downstream)
         return function
 
     return decorator

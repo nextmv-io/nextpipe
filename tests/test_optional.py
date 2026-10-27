@@ -2,7 +2,9 @@ import os
 import sys
 import unittest
 
-from nextpipe import FlowSpec, foreach, join, needs, optional, step
+from nextmv.deprecated import NextmvDeprecationWarning
+
+from nextpipe import FlowSpec, decorators, foreach, join, needs, optional, step
 from nextpipe.flow import STATUS_SKIPPED, STATUS_SUCCEEDED
 
 # Add the parent directory to the sys.path to allow imports from the main package. This
@@ -15,13 +17,13 @@ class IfElseFlow(FlowSpec):
     def prepare(data: dict) -> dict:
         return data
 
-    @optional(condition=lambda step, data: data["mode"] == "a")
+    @optional(condition=lambda step, data: data["mode"] == "a", skip_downstream=True)
     @needs(predecessors=[prepare])
     @step
     def branch_a(data: dict) -> str:
         return "a"
 
-    @optional(condition=lambda step, data: data["mode"] == "b")
+    @optional(condition=lambda step, data: data["mode"] == "b", skip_downstream=True)
     @needs(predecessors=[prepare])
     @step
     def branch_b(data: dict) -> str:
@@ -38,7 +40,7 @@ class IfElseFlow(FlowSpec):
         return a or b
 
 
-class StepOnlyFlow(FlowSpec):
+class LocalSkipFlow(FlowSpec):
     @optional(condition=lambda step: step.get_id() == "nope")
     @step
     def first() -> str:
@@ -46,12 +48,12 @@ class StepOnlyFlow(FlowSpec):
 
     @needs(predecessors=[first])
     @step
-    def second(result: str) -> str:
-        return result
+    def second(result: str | None) -> str:
+        return f"second after {result}"
 
 
 class ForeachFlow(FlowSpec):
-    @optional(condition=lambda step, data: data["fan_out"])
+    @optional(condition=lambda step, data: data["fan_out"], skip_downstream=True)
     @foreach()
     @step
     def fan_out(data: dict) -> list[int]:
@@ -65,11 +67,11 @@ class ForeachFlow(FlowSpec):
     @join()
     @needs(predecessors=[work])
     @step
-    def collect(results: list[list[int | None]]) -> list[int]:
-        return [r[0] for r in results if r[0] is not None]
+    def collect(results: list[list[int]]) -> list[int]:
+        return [r[0] for r in results]
 
 
-class JoinStopsSkipFlow(FlowSpec):
+class SkipThenCollectFlow(FlowSpec):
     @foreach()
     @step
     def split(data: dict) -> list[int]:
@@ -123,10 +125,11 @@ class TestOptional(unittest.TestCase):
         self.assertEqual(_statuses(flow)["merge"], [STATUS_SKIPPED])
         self.assertIsNone(flow.get_result(flow.merge))
 
-    def test_step_only_condition(self):
-        flow = StepOnlyFlow("StepOnly", None)
+    def test_local_skip_by_default(self):
+        flow = LocalSkipFlow("LocalSkip", None)
         flow.run()
-        self.assertEqual(_statuses(flow), {"first": [STATUS_SKIPPED], "second": [STATUS_SKIPPED]})
+        self.assertEqual(_statuses(flow), {"first": [STATUS_SKIPPED], "second": [STATUS_SUCCEEDED]})
+        self.assertEqual(flow.get_result(flow.second), "second after None")
 
     def test_skipped_foreach(self):
         flow = ForeachFlow("Foreach", {"fan_out": True})
@@ -137,12 +140,11 @@ class TestOptional(unittest.TestCase):
         flow.run()
         self.assertEqual(
             _statuses(flow),
-            {"fan_out": [STATUS_SKIPPED], "work": [STATUS_SKIPPED], "collect": [STATUS_SUCCEEDED]},
+            {"fan_out": [STATUS_SKIPPED], "work": [STATUS_SKIPPED], "collect": [STATUS_SKIPPED]},
         )
-        self.assertEqual(flow.get_result(flow.collect), [])
 
-    def test_join_stops_skip_propagation(self):
-        flow = JoinStopsSkipFlow("JoinStopsSkip", {})
+    def test_skip_then_collect(self):
+        flow = SkipThenCollectFlow("SkipThenCollect", {})
         flow.run()
         self.assertEqual(
             _statuses(flow),
@@ -154,6 +156,43 @@ class TestOptional(unittest.TestCase):
             },
         )
         self.assertEqual(flow.get_result(flow.finish), "merged+")
+
+
+class _Conditions:
+    def only_step(self, step):
+        return step == "s"
+
+    def with_input(self, step, data):
+        return data == "d"
+
+
+class TestConditionArguments(unittest.TestCase):
+    def _evaluate(self, condition) -> bool:
+        return decorators.Optional(condition).evaluate("s", ["d"])
+
+    def test_step_only(self):
+        self.assertTrue(self._evaluate(lambda step: step == "s"))
+
+    def test_with_inputs(self):
+        self.assertTrue(self._evaluate(lambda step, data: data == "d"))
+        self.assertTrue(self._evaluate(lambda step, *inputs: inputs == ("d",)))
+
+    def test_defaults_are_not_inputs(self):
+        self.assertTrue(self._evaluate(lambda step, verbose=False: step == "s" and verbose is False))
+
+    def test_bound_methods(self):
+        conditions = _Conditions()
+        self.assertTrue(self._evaluate(conditions.only_step))
+        self.assertTrue(self._evaluate(conditions.with_input))
+
+    def test_deprecated_skip(self):
+        @optional(condition=lambda step: False)
+        @step
+        def skipped():
+            pass
+
+        with self.assertWarns(NextmvDeprecationWarning):
+            self.assertTrue(skipped.step.skip())
 
 
 if __name__ == "__main__":
