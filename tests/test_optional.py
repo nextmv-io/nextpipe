@@ -95,6 +95,32 @@ class SkipThenCollectFlow(FlowSpec):
         return result + "+"
 
 
+CONSECUTIVE_CONDITION_CALLS = []
+
+
+def _consecutive_second_condition(step):
+    CONSECUTIVE_CONDITION_CALLS.append(step.get_id())
+    return False
+
+
+class ConsecutiveOptionalFlow(FlowSpec):
+    @optional(condition=lambda step, data: data["first"], skip_downstream=True)
+    @step
+    def first(data: dict) -> str:
+        return "first"
+
+    @optional(condition=_consecutive_second_condition)
+    @needs(predecessors=[first])
+    @step
+    def second(result: str) -> str:
+        return "second"
+
+    @needs(predecessors=[second])
+    @step
+    def third(result: str | None) -> str:
+        return f"third after {result}"
+
+
 def _statuses(flow: FlowSpec) -> dict[str, list[str]]:
     return {s.definition.get_id(): [n.status for n in s.nodes] for s in flow.graph.steps}
 
@@ -156,6 +182,27 @@ class TestOptional(unittest.TestCase):
             },
         )
         self.assertEqual(flow.get_result(flow.finish), "merged+")
+
+    def test_consecutive_optional_steps(self):
+        # A propagated skip wins over the next step's own condition, which is not evaluated.
+        CONSECUTIVE_CONDITION_CALLS.clear()
+        flow = ConsecutiveOptionalFlow("ConsecutiveOptional", {"first": False})
+        flow.run()
+        self.assertEqual(
+            _statuses(flow),
+            {"first": [STATUS_SKIPPED], "second": [STATUS_SKIPPED], "third": [STATUS_SKIPPED]},
+        )
+        self.assertEqual(CONSECUTIVE_CONDITION_CALLS, [])
+
+        # If the first step runs, the second step's own (local) skip applies.
+        flow = ConsecutiveOptionalFlow("ConsecutiveOptional", {"first": True})
+        flow.run()
+        self.assertEqual(
+            _statuses(flow),
+            {"first": [STATUS_SUCCEEDED], "second": [STATUS_SKIPPED], "third": [STATUS_SUCCEEDED]},
+        )
+        self.assertEqual(CONSECUTIVE_CONDITION_CALLS, ["second"])
+        self.assertEqual(flow.get_result(flow.third), "third after None")
 
 
 class _Conditions:
