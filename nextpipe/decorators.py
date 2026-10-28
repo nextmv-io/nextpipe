@@ -45,6 +45,7 @@ app
     Decorator to mark a step as a Nextmv Application.
 """
 
+import inspect
 import typing
 from collections.abc import Callable
 from enum import Enum
@@ -177,9 +178,25 @@ class Step:
 
         return hasattr(self, "needs")
 
+    def is_optional(self):
+        """
+        Check if the step is optional.
+
+        Returns
+        -------
+        bool
+            True if the step is optional, False otherwise.
+        """
+
+        return hasattr(self, "optional")
+
     def skip(self):
         """
         Check if the step should be skipped.
+
+        Deprecated: skipping is decided by the runner, which also passes the
+        step's inputs to the condition and propagates skips. Use
+        `is_optional()` to check whether a step has a condition.
 
         Returns
         -------
@@ -187,7 +204,11 @@ class Step:
             True if the step should be skipped, False otherwise.
         """
 
-        return hasattr(self, "optional") and not self.optional.condition(self)
+        deprecated(
+            "Step.skip",
+            "Step.skip() is deprecated and will be removed in a future release. Use Step.is_optional() instead.",
+        )
+        return self.is_optional() and not self.optional.condition(self)
 
     def is_repeat(self):
         """
@@ -435,9 +456,12 @@ class Optional:
     condition : callable
         A function that takes a step and returns a boolean indicating
         whether the step should be executed or not.
+    skip_downstream : bool
+        Whether skipping this step also skips the steps that depend only on
+        it.
     """
 
-    def __init__(self, condition: callable):
+    def __init__(self, condition: callable, skip_downstream: bool = False):
         """
         Initialize an Optional object.
 
@@ -446,9 +470,45 @@ class Optional:
         condition : callable
             A function that takes a step and returns a boolean indicating
             whether the step should be executed or not.
+        skip_downstream : bool, optional
+            Whether skipping this step also skips the steps that depend only
+            on it, by default False.
         """
 
         self.condition = condition
+        self.skip_downstream = skip_downstream
+
+    def evaluate(self, step: Step, inputs: list[typing.Any]) -> bool:
+        """
+        Evaluate the condition.
+
+        Conditions with a single required parameter only receive the step.
+        Conditions with more required parameters (or `*args`) additionally
+        receive the inputs of the step (the results of its predecessors, or the
+        flow input if it has none).
+
+        Parameters
+        ----------
+        step : Step
+            The step the condition belongs to.
+        inputs : list[Any]
+            The inputs of the step.
+
+        Returns
+        -------
+        bool
+            True if the step should be executed, False otherwise.
+        """
+
+        # Parameters with defaults are not counted, and `self` of bound methods
+        # is not part of the signature.
+        params = inspect.signature(self.condition).parameters.values()
+        positional = (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        required = [p for p in params if p.kind in positional and p.default is inspect.Parameter.empty]
+        varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
+        if len(required) <= 1 and not varargs:
+            return self.condition(step)
+        return self.condition(step, *inputs)
 
     def __repr__(self):
         """
@@ -460,10 +520,10 @@ class Optional:
             A string representation of the optional condition.
         """
 
-        return f"StepOnlyIf({self.condition})"
+        return f"StepOnlyIf({self.condition}, skip_downstream={self.skip_downstream})"
 
 
-def optional(condition: Callable[[Step], bool]):
+def optional(condition: Callable[..., bool], skip_downstream: bool = False):
     """
     Decorator to mark a step as optional.
 
@@ -474,41 +534,75 @@ def optional(condition: Callable[[Step], bool]):
     ```
 
     This is used to determine whether the step should be executed or not. The
-    condition is a callable that takes the step as an argument and returns a
-    boolean indicating whether the step should be executed or not. The
-    condition is evaluated at runtime, so it can depend on the runtime state of
-    the pipeline.
+    condition is evaluated at runtime, right before the step would run. It
+    receives the step and, if it accepts more arguments, the inputs of the step
+    (the results of its predecessors, or the flow input if it has none).
+
+    A skipped step has the status `skipped` and its result is `None`. By
+    default, only the step itself is skipped: its successors still run and
+    receive `None` as its result.
+
+    With `skip_downstream=True`, the skip propagates: a step whose
+    predecessors were all skipped this way is skipped as well (and so on). A
+    step with at least one other predecessor still runs and receives `None`
+    for each skipped one. This allows modeling if/else branches that are
+    merged again by a common successor.
 
     Parameters
     ----------
-    condition : Callable[[Step], bool]
+    condition : Callable[..., bool]
         The condition to evaluate. This is a callable that takes the step
-        as an argument and returns a boolean indicating whether the step
-        should be executed or not.
+        (and optionally the inputs of the step) as arguments and returns a
+        boolean indicating whether the step should be executed or not.
+    skip_downstream : bool, optional
+        Whether skipping this step also skips the steps that depend only on
+        it, by default False.
 
     Example
     -------
-    In this example the step `step1` is executed given that the condition is
-    true.
+    In this example either `solve_small` or `solve_large` (and its successor
+    `polish`) is executed, depending on the input. `report` merges both branches.
 
     ```
-    from nextpipe import FlowSpec, log, optional, step
+    from nextpipe import FlowSpec, log, needs, optional, step
 
 
     class Flow(FlowSpec):
-        @optional(condition=lambda step: step.get_id() == "step1")
         @step
-        def step1() -> None:
-            log("Execute optional step 1")
+        def prepare(data: dict) -> dict:
+            return data
+
+        @optional(condition=lambda step, data: len(data["orders"]) <= 10, skip_downstream=True)
+        @needs(predecessors=[prepare])
+        @step
+        def solve_small(data: dict) -> dict:
+            return {"solver": "small"}
+
+        @optional(condition=lambda step, data: len(data["orders"]) > 10, skip_downstream=True)
+        @needs(predecessors=[prepare])
+        @step
+        def solve_large(data: dict) -> dict:
+            return {"solver": "large"}
+
+        @needs(predecessors=[solve_large])
+        @step
+        def polish(result: dict) -> dict:  # skipped if solve_large is skipped
+            return result | {"polished": True}
+
+        @needs(predecessors=[solve_small, polish])
+        @step
+        def report(small: dict | None, large: dict | None) -> dict:
+            return small or large
 
 
-    flow = Flow("DecisionFlow", None)
+    flow = Flow("DecisionFlow", {"orders": [1, 2, 3]})
     flow.run()
+    log(flow.get_result(flow.report))  # {'solver': 'small'}
     ```
     """
 
     def decorator(function):
-        function.step.optional = Optional(condition)
+        function.step.optional = Optional(condition, skip_downstream)
         return function
 
     return decorator
