@@ -32,6 +32,7 @@ import os
 import pathlib
 import random
 import shutil
+import signal
 import tempfile
 import threading
 import time
@@ -61,6 +62,9 @@ STATUS_FAILED = "failed"
 
 STATUS_SKIPPED = "skipped"
 """Status constant indicating a skipped step or node."""
+
+SUB_RUN_CANCEL_TIMEOUT = 10.0
+"""Maximum time in seconds to wait for sub-run cancel requests when the flow is aborted."""
 
 
 class FlowStep:
@@ -964,8 +968,9 @@ class Runner:
 
         polling_options = copy.deepcopy(app_step.polling_options)
         polling_options.initial_delay = random.uniform(0, 5)
-        if polling_options.stop is None:
-            polling_options.stop = lambda: node.cancel
+        # Always stop polling when the node gets cancelled, in addition to any user-defined stop condition.
+        user_stop = polling_options.stop
+        polling_options.stop = lambda: node.cancel or (user_stop is not None and user_stop())
 
         run_kwargs: dict[str, Any] = {
             "options": options,
@@ -1004,6 +1009,9 @@ class Runner:
             utils.log_internal(f"Started app step {node.id} run, find it at {console_url}")
             node.run_id = run_id
             update_dag()  # Update node with run_id before polling
+            if node.cancel:
+                # The flow was aborted while the run was being started, cancel it right away.
+                Runner.__cancel_app_run(node, app)
 
             if app_step.emit_live_logs:
                 utils.log_internal(f"Emitting live logs for app step {node.id} ...")
@@ -1232,31 +1240,126 @@ class Runner:
             reference=node,
         )
 
-    def run(self):
+    @staticmethod
+    def __cancel_app_run(node: FlowNode, app: Application) -> None:
         """
-        Run the flow.
+        Request the cancellation of the remote run of an app step node.
 
-        This method starts the uplink communication, executes the flow steps
-        in the correct order based on dependencies, and handles failures.
+        This is best effort: failures are logged, but not raised.
+
+        Parameters
+        ----------
+        node : FlowNode
+            The node whose run should be cancelled.
+        app : Application
+            The application the run belongs to.
+        """
+
+        try:
+            app.cancel_run(node.run_id)
+            utils.log_internal(f"Requested cancellation of app step {node.id} run {node.run_id}")
+        except Exception as e:
+            utils.log_internal(f"Failed to cancel app step {node.id} run {node.run_id}: {e}")
+
+    def __cancel_running(self, running_steps: set[FlowStep]) -> None:
+        """
+        Cancel all nodes of the given running steps.
+
+        Flags the nodes as cancelled (which stops polling for their results) and
+        requests the cancellation of the remote runs of app steps that are still
+        in progress. The cancel requests are sent in parallel and waited for at
+        most `SUB_RUN_CANCEL_TIMEOUT` seconds in total.
+
+        Parameters
+        ----------
+        running_steps : set[FlowStep]
+            The steps that are currently running.
+        """
+
+        cancel_threads: list[threading.Thread] = []
+        for step in running_steps:
+            for node in step.nodes:
+                node.cancel = True
+                node.status = STATUS_FAILED
+                if node.done or node.run_id is None or not step.definition.is_app():
+                    continue
+                app = Application(client=self.spec.client, id=step.definition.app.app_id)
+                thread = threading.Thread(
+                    target=Runner.__cancel_app_run,
+                    args=(node, app),
+                    name=f"{utils.THREAD_NAME_PREFIX}cancel-{node.id}",
+                    daemon=True,
+                )
+                thread.start()
+                cancel_threads.append(thread)
+
+        deadline = time.monotonic() + SUB_RUN_CANCEL_TIMEOUT
+        for thread in cancel_threads:
+            thread.join(timeout=max(0.0, deadline - time.monotonic()))
+
+    @staticmethod
+    def __install_sigterm_handler() -> Any:
+        """
+        Install a SIGTERM handler that raises `SystemExit`.
+
+        This allows handling a termination request the same way as a keyboard
+        interrupt, i.e., by cancelling the running steps. Signal handlers can only
+        be installed from the main thread, otherwise this is a no-op.
+
+        Returns
+        -------
+        Any
+            The previous SIGTERM handler, or None if no handler was installed.
+        """
+
+        if threading.current_thread() is not threading.main_thread():
+            return None
+
+        def handler(signum, frame):
+            raise SystemExit(128 + signum)
+
+        return signal.signal(signal.SIGTERM, handler)
+
+    @staticmethod
+    def __restore_sigterm_handler(previous_handler: Any) -> None:
+        """
+        Restore the SIGTERM handler that was active before running the flow.
+
+        Parameters
+        ----------
+        previous_handler : Any
+            The previous handler as returned by `__install_sigterm_handler`.
+        """
+
+        if previous_handler is not None:
+            signal.signal(signal.SIGTERM, previous_handler)
+
+    def __run_steps(
+        self,
+        open_steps: set[FlowStep],
+        running_steps: set[FlowStep],
+        closed_steps: set[FlowStep],
+    ) -> None:
+        """
+        Execute the steps of the flow until all of them are done.
+
+        The given sets are updated in place, so that the caller can react to
+        interruptions (e.g., cancel the steps still running).
+
+        Parameters
+        ----------
+        open_steps : set[FlowStep]
+            Steps that are ready to be considered for execution.
+        running_steps : set[FlowStep]
+            Steps that are currently running.
+        closed_steps : set[FlowStep]
+            Steps that are done.
 
         Raises
         ------
         RuntimeError
             If the flow execution fails.
         """
-
-        # Start communicating updates to the platform
-        try:
-            self.uplink.submit_update(self.graph._to_uplink_dto())
-            self.uplink.run_async()
-        except Exception as e:
-            self.uplink.terminate()
-            utils.log_internal(f"Failed to update graph with platform: {e}")
-
-        # Start running the flow
-        open_steps: set[FlowStep] = set(self.graph.start_steps)
-        running_steps: set[FlowStep] = set()
-        closed_steps: set[FlowStep] = set()
 
         # Run the steps in parallel
         while open_steps or running_steps:
@@ -1315,16 +1418,54 @@ class Runner:
                 # Raise an exception if the flow failed
                 with self.lock_fail:
                     if self.fail:
-                        # Issue cancel to all nodes
-                        for step in running_steps:
-                            for node in step.nodes:
-                                node.cancel = True
-                                node.status = STATUS_FAILED
+                        # Issue cancel to all nodes (including their remote runs)
+                        self.__cancel_running(running_steps)
                         # Submitting the final state and terminating uplink causes the last
                         # update to be send to the platform (reflecting the final state).
                         self.uplink.submit_update(self.graph._to_uplink_dto())
                         self.uplink.terminate()  # This will issue the final update.
                         raise RuntimeError(f"Flow failed: {self.fail_reason}")
+
+    def run(self):
+        """
+        Run the flow.
+
+        This method starts the uplink communication, executes the flow steps
+        in the correct order based on dependencies, and handles failures.
+
+        Raises
+        ------
+        RuntimeError
+            If the flow execution fails.
+        """
+
+        # Start communicating updates to the platform
+        try:
+            self.uplink.submit_update(self.graph._to_uplink_dto())
+            self.uplink.run_async()
+        except Exception as e:
+            self.uplink.terminate()
+            utils.log_internal(f"Failed to update graph with platform: {e}")
+
+        # Start running the flow
+        open_steps: set[FlowStep] = set(self.graph.start_steps)
+        running_steps: set[FlowStep] = set()
+        closed_steps: set[FlowStep] = set()
+
+        # Translate SIGTERM (e.g., a cancelled run on the platform) into an
+        # exception, so that it is handled like SIGINT (ctrl+c).
+        previous_sigterm_handler = Runner.__install_sigterm_handler()
+
+        try:
+            self.__run_steps(open_steps, running_steps, closed_steps)
+        except (KeyboardInterrupt, SystemExit):
+            utils.log_internal("Flow was interrupted, cancelling running steps")
+            self.__cancel_running(running_steps)
+            self.uplink.submit_update(self.graph._to_uplink_dto())
+            self.uplink.terminate()
+            raise
+        finally:
+            Runner.__restore_sigterm_handler(previous_sigterm_handler)
 
         # Terminate uplink
         self.uplink.terminate()
