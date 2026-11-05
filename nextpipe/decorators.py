@@ -18,6 +18,8 @@ Needs
     Represents dependencies between steps.
 Optional
     Represents an optional step condition.
+OnFailure
+    Represents the failure handling of a step.
 Repeat
     Represents a repeating step.
 Foreach
@@ -35,6 +37,8 @@ needs
     Decorator to mark the predecessors of a step.
 optional
     Decorator to mark a step as optional.
+on_failure
+    Decorator to let a step fail without failing the flow.
 repeat
     Decorator to make a step be repeated a number of times.
 foreach
@@ -189,6 +193,18 @@ class Step:
         """
 
         return hasattr(self, "optional")
+
+    def is_on_failure(self):
+        """
+        Check if the step may fail without failing the flow.
+
+        Returns
+        -------
+        bool
+            True if the step has an `on_failure` handler, False otherwise.
+        """
+
+        return hasattr(self, "on_failure")
 
     def skip(self):
         """
@@ -603,6 +619,129 @@ def optional(condition: Callable[..., bool], skip_downstream: bool = False):
 
     def decorator(function):
         function.step.optional = Optional(condition, skip_downstream)
+        return function
+
+    return decorator
+
+
+class OnFailure:
+    """
+    Represents the failure handling of a step.
+
+    This class is used by the `on_failure` decorator to specify the result that
+    replaces the result of a step if it fails.
+
+    Attributes
+    ----------
+    fallback : Any
+        The result to use instead, or a callable that receives the error and
+        returns it.
+    """
+
+    def __init__(self, fallback: typing.Any = None):
+        """
+        Initialize an OnFailure object.
+
+        Parameters
+        ----------
+        fallback : Any, optional
+            The result to use instead, or a callable that receives the error
+            and returns it, by default None.
+        """
+
+        self.fallback = fallback
+
+    def resolve(self, error: Exception) -> typing.Any:
+        """
+        Determine the result to use for a failed step.
+
+        Parameters
+        ----------
+        error : Exception
+            The error that made the step fail.
+
+        Returns
+        -------
+        Any
+            The fallback result.
+        """
+
+        if callable(self.fallback):
+            return self.fallback(error)
+        return self.fallback
+
+    def __repr__(self):
+        """
+        Return a string representation of the failure handling.
+
+        Returns
+        -------
+        str
+            A string representation of the failure handling.
+        """
+
+        return f"OnFailure({self.fallback})"
+
+
+def on_failure(fallback: typing.Any = None):
+    """
+    Decorator to let a step fail without failing the flow.
+
+    You can import the `on_failure` decorator directly from `nextpipe`:
+
+    ```python
+    from nextpipe import on_failure
+    ```
+
+    By default, a failing step fails the whole flow. With this decorator, a
+    failure (e.g., an exception or a failed app run) only fails the step
+    itself: it has the status `failed`, the flow continues and its successors
+    receive the fallback as its result. If the step has multiple nodes (e.g.,
+    `foreach`), this applies to each node separately.
+
+    Parameters
+    ----------
+    fallback : Any, optional
+        The result to use instead of the result of the failed step. If it is
+        callable, it is called with the error (e.g., an `AppRunError` for a
+        failed app run) and its return value is used. By default, None.
+
+    Example
+    -------
+    In this example the flow still produces an output if the solver app fails.
+
+    ```
+    from nextpipe import FlowSpec, app, log, needs, on_failure, step
+
+
+    class Flow(FlowSpec):
+        @step
+        def prepare(data: dict) -> dict:
+            return data
+
+        @on_failure(fallback=lambda error: {"error": str(error)})
+        @app(app_id="solver")
+        @needs(predecessors=[prepare])
+        @step
+        def solve() -> None:
+            pass
+
+        @needs(predecessors=[solve])
+        @step
+        def report(result: dict) -> dict:
+            if "error" in result:
+                return {"status": "failed", "reason": result["error"]}
+            return {"status": "ok", "solution": result["solution"]}
+
+
+    flow = Flow("DecisionFlow", {"orders": [1, 2, 3]})
+    flow.run()
+    log(flow.get_result(flow.report))
+    ```
+    """
+
+    def decorator(function):
+        function.step.on_failure = OnFailure(fallback)
         return function
 
     return decorator
