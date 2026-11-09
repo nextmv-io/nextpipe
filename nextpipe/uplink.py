@@ -286,6 +286,7 @@ class UplinkClient:
         self.changed = False
         self._terminate = False
         self._terminated = False
+        self._wake = threading.Event()
         self._updates_failed = 0
 
     def _post_node_update(self):
@@ -375,8 +376,8 @@ class UplinkClient:
                                 self._terminate = True
                 else:
                     self._updates_failed = 0
-                # Sleep
-                time.sleep(UPDATE_INTERVAL)
+                # Sleep (woken up early on termination)
+                self._wake.wait(UPDATE_INTERVAL)
 
             # Signal termination
             self._terminated = True
@@ -399,6 +400,7 @@ class UplinkClient:
 
         # Terminate the client
         self._terminate = True
+        self._wake.set()
         while not self._terminated:
             time.sleep(0.1)
 

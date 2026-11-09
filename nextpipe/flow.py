@@ -63,8 +63,14 @@ STATUS_FAILED = "failed"
 STATUS_SKIPPED = "skipped"
 """Status constant indicating a skipped step or node."""
 
-SUB_RUN_CANCEL_TIMEOUT = 10.0
-"""Maximum time in seconds to wait for sub-run cancel requests when the flow is aborted."""
+SUB_RUN_CANCEL_TIMEOUT = 5.0
+"""
+Maximum time in seconds to wait for sub-run cancel requests when the flow is aborted.
+
+When a run is canceled on the Nextmv platform, the workflow process is
+interrupted and killed after a grace period of 10 seconds. This timeout, plus
+the final flow update sent afterwards, must fit within that grace period.
+"""
 
 
 class FlowStep:
