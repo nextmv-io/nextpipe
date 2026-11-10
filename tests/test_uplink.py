@@ -7,7 +7,7 @@ import unittest
 import nextmv.cloud
 
 from nextpipe import FlowSpec, app, needs, step
-from nextpipe.uplink import FlowDTO, FlowUpdateDTO, NodeDTO, StepDTO, UplinkClient
+from nextpipe.uplink import UPDATE_INTERVAL, FlowDTO, FlowUpdateDTO, NodeDTO, StepDTO, UplinkClient, UplinkConfig
 
 # Add the parent directory to the sys.path to allow imports from the main package. This
 # is meant to help VS Code testing features.
@@ -107,3 +107,19 @@ class TestLogger(unittest.TestCase):
         time.sleep(0.5)
         uplink.terminate()
         time.sleep(0.5)
+
+    def test_terminate_does_not_wait_for_update_interval(self):
+        """Terminating must not wait out the sleep between updates (e.g., on cancellation)."""
+
+        client = nextmv.cloud.Client(api_key="unavailable", url="https://unavailable.url")
+        uplink = UplinkClient(client=client, config=UplinkConfig(application_id="app", run_id="run"))
+        posted = []
+        uplink._post_node_update = lambda: posted.append(time.monotonic())
+        uplink.run_async()
+        uplink.submit_update(_create_example_flow())
+        # Wait for the first update, the update thread is sleeping afterwards.
+        while not posted:
+            time.sleep(0.01)
+        start = time.monotonic()
+        uplink.terminate()
+        self.assertLess(time.monotonic() - start, UPDATE_INTERVAL / 2)
