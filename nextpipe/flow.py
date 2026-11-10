@@ -18,6 +18,8 @@ StepVisitor
     AST visitor for finding step functions in a flow class.
 Runner
     Handles the execution of a flow graph.
+AppRunError
+    Raised when the run of an app step does not succeed.
 
 The module also defines status constants used throughout pipeline execution.
 """
@@ -71,6 +73,45 @@ When a run is canceled on the Nextmv platform, the workflow process is
 interrupted and killed after a grace period of 10 seconds. This timeout, plus
 the final flow update sent afterwards, must fit within that grace period.
 """
+
+
+class AppRunError(Exception):
+    """
+    Raised when the run of an app step does not succeed.
+
+    You can import the `AppRunError` class directly from `nextpipe`:
+
+    ```python
+    from nextpipe import AppRunError
+    ```
+
+    Attributes
+    ----------
+    step_id : str
+        The ID of the node of the app step.
+    app_id : str
+        The ID of the application that was run.
+    run_id : str
+        The ID of the run.
+    status : str
+        The final status of the run (e.g., `failed` or `canceled`).
+    error : str
+        The error message of the run, if any.
+    console_url : str
+        The URL of the run in the Nextmv Console.
+    """
+
+    def __init__(self, step_id: str, app_id: str, run_id: str, status: str, error: str, console_url: str):
+        self.step_id = step_id
+        self.app_id = app_id
+        self.run_id = run_id
+        self.status = status
+        self.error = error
+        self.console_url = console_url
+        message = f"run {run_id} of app {app_id} {status}"
+        if error:
+            message += f": {error}"
+        super().__init__(f"{message} (see {console_url})")
 
 
 class FlowStep:
@@ -745,6 +786,8 @@ class Runner:
         Whether the flow has failed.
     fail_reason : str or None
         Reason for the flow failure, if any.
+    fail_error : Exception or None
+        Error that made the flow fail, if any.
     lock_fail : threading.Lock
         Lock for updating fail state.
     lock_running : threading.Lock
@@ -781,6 +824,7 @@ class Runner:
         self.node_idxs = {}
         self.fail = False
         self.fail_reason = None
+        self.fail_error = None
         self.lock_fail = threading.Lock()
         self.lock_running = threading.Lock()
 
@@ -892,11 +936,24 @@ class Runner:
         failed = job.error or reference.error
         reference.status = STATUS_SUCCEEDED if not failed else STATUS_FAILED
         reference.result = job.result
+        error = job.error
+        if error:
+            reference.error = str(error)
+            definition = reference.parent.definition
+            if definition.is_on_failure() and not reference.cancel:
+                # The step may fail, continue with the fallback as its result
+                try:
+                    reference.result = definition.on_failure.resolve(error)
+                    utils.log_internal(f"Node {reference.id} failed, continuing with fallback: {error}")
+                    error = None
+                except Exception as e:
+                    error = e
         # Check if the job failed and mark the flow as failed if it did
         with self.lock_fail:
-            if job.error and not self.fail:
+            if error and not self.fail:
                 self.fail = True
-                self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {job.error}"
+                self.fail_reason = f"Step {reference.parent.definition.get_id()} failed: {error}"
+                self.fail_error = error
         # Mark the node as done (and its parent if all nodes are done)
         reference.done = True
         with reference.parent.lock:
@@ -1027,7 +1084,25 @@ class Runner:
                     log_func=lambda msg: utils.log(message=msg.log, step_name=node.id),
                 )
 
-            return app.run_result_with_polling(run_id=run_id, polling_options=polling_options, output_dir_path=temp_dir)
+            def polling_func() -> tuple[Any, bool]:
+                information = app.run_information(run_id=run_id)
+                return information, information.metadata.run_is_finalized()
+
+            information = nextmv.poll(polling_options=polling_options, polling_func=polling_func)
+            if information is None:
+                raise RuntimeError(f"Stopped waiting for app step {node.id} run {run_id}")
+            # Only fetch the result of succeeded runs, failed ones may not have any output
+            status = information.metadata.status_v2
+            if status != nextmv.StatusV2.succeeded:
+                raise AppRunError(
+                    step_id=node.id,
+                    app_id=app_step.app_id,
+                    run_id=run_id,
+                    status=getattr(status, "value", str(status)),
+                    error=information.metadata.error,
+                    console_url=console_url,
+                )
+            return app.run_result(run_id=run_id, output_dir_path=temp_dir)
 
         utils.log_internal(f"Bypassing app step {node.id} run, using bypass result")
 
@@ -1430,7 +1505,10 @@ class Runner:
                         # update to be send to the platform (reflecting the final state).
                         self.uplink.submit_update(self.graph._to_uplink_dto())
                         self.uplink.terminate()  # This will issue the final update.
-                        raise RuntimeError(f"Flow failed: {self.fail_reason}")
+                        # Failed app runs are fully described by their message, other
+                        # errors keep their traceback (e.g., to debug the step function).
+                        cause = None if isinstance(self.fail_error, AppRunError) else self.fail_error
+                        raise RuntimeError(f"Flow failed: {self.fail_reason}") from cause
 
     def run(self):
         """

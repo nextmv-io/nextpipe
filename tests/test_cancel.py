@@ -44,11 +44,10 @@ class _FakeApplication:
         _FakeApplication.started.set()
         return f"run-{self.id}"
 
-    def run_result_with_polling(self, run_id, polling_options, output_dir_path):
-        # Poll until the stop condition (i.e., the node cancel flag) is met.
-        while not polling_options.stop():
-            time.sleep(0.01)
-        raise RuntimeError("polling stopped")
+    def run_information(self, run_id):
+        # The run never finishes on its own, so polling only ends on the stop condition.
+        time.sleep(0.01)
+        return mock.Mock(metadata=mock.Mock(run_is_finalized=lambda: False))
 
     def cancel_run(self, run_id: str) -> None:
         if _FakeApplication.fail_cancel:

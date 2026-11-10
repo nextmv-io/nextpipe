@@ -225,8 +225,8 @@ class Pool:
                     job.start_callback(job)
                 job.run()
             except Exception as e:
+                # Keep the error on the job, it is up to the done callback to handle it
                 job.error = e
-                raise RuntimeError(f"Error in thread {thread_id}: {e}") from e
             finally:
                 with self.lock:
                     self.running.pop(thread_id, None)
